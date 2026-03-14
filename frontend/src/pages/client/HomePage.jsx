@@ -24,29 +24,24 @@ import categoryApi from "../../services/category.service";
 import "../../assets/styles/home.css";
 
 const HomePage = () => {
-  // --- STATE DỮ LIỆU ---
+  // --- STATE DỮ LIỆU (Giữ nguyên 100%) ---
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // State cho Quick View
   const [showQuickView, setShowQuickView] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // --- FETCH DATA TỪ API ---
+  // --- FETCH DATA TỪ API (Giữ nguyên 100%) ---
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Gọi song song API Product và Category
         const [prodRes, catRes] = await Promise.all([
           productApi.getAll({ limit: 12, sort: "-createdAt" }),
           categoryApi.getAll(),
         ]);
 
-        // 1. Xử lý Sản phẩm
-        // Backend trả về: { success: true, data: [...] }
-        // Frontend cũ gọi nhầm là prodRes.products -> Sửa thành prodRes.data
         if (prodRes && prodRes.data) {
           const list = Array.isArray(prodRes.data)
             ? prodRes.data
@@ -54,26 +49,21 @@ const HomePage = () => {
 
           const mappedProducts = list.map((p) => ({
             ...p,
-            id: p._id, // Map _id thành id cho ProductCard
+            id: p._id,
             price: p.price_cents,
             salePrice:
               p.compareAtPriceCents && p.compareAtPriceCents > p.price_cents
                 ? p.compareAtPriceCents
                 : null,
-            // Lấy ảnh đầu tiên, fallback nếu không có
             image:
               p.images?.[0]?.imageUrl ||
-              "https://placehold.co/300x300?text=No+Image",
+              "https://placehold.co/300x420?text=Mystery+Card",
             category: p.categoryId?.name || "Sản phẩm",
           }));
           setProducts(mappedProducts);
         }
 
-        // 2. Xử lý Danh mục
-        // Backend trả về: { success: true, data: [...] } hoặc { categories: [...] } tùy service
-        // Kiểm tra kỹ cấu trúc trả về
         if (catRes) {
-          // Logic fallback để bắt đúng mảng danh mục dù cấu trúc là gì
           let catList = [];
           if (Array.isArray(catRes)) catList = catRes;
           else if (Array.isArray(catRes.data)) catList = catRes.data;
@@ -99,188 +89,276 @@ const HomePage = () => {
     setShowQuickView(true);
   };
 
-  // Hàm render ảnh danh mục (Fallback)
   const getCategoryImage = (cat, index) => {
     if (cat.image || cat.imageUrl) return cat.image || cat.imageUrl;
     const placeholders = [
-      "https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?auto=format&fit=crop&w=300&q=80",
-      "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&w=300&q=80",
-      "https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?auto=format&fit=crop&w=300&q=80",
-      "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=300&q=80",
-      "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=300&q=80",
+      "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?auto=format&fit=crop&w=300&q=80",
+      "https://images.unsplash.com/photo-1605901309584-818e25960b8f?auto=format&fit=crop&w=300&q=80",
+      "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=300&q=80",
+      "https://images.unsplash.com/photo-1620336655055-088d06e36bf0?auto=format&fit=crop&w=300&q=80",
+      "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=300&q=80",
     ];
     return placeholders[index % placeholders.length];
   };
 
-  // Blog giả định
   const blogs = [
     {
       id: 1,
-      title: "5 Cách sống xanh dễ dàng tại nhà",
-      img: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=600&q=80",
-      date: "20/01/2025",
+      title: "Bí quyết bảo quản thẻ bài bằng Toploader & Sleeves",
+      img: "https://images.unsplash.com/photo-1613771404721-1f92d799e49f?auto=format&fit=crop&w=600&q=80",
+      date: "20/01/2026",
     },
     {
       id: 2,
-      title: "Lợi ích tuyệt vời của rau hữu cơ",
-      img: "https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=1000&auto=format&fit=crop",
-      date: "18/01/2025",
+      title: "Tiêu chuẩn đánh giá PSA, BGS, CGC cơ bản",
+      img: "https://images.unsplash.com/photo-1636570823577-c3b03f0b263b?auto=format&fit=crop&w=600&q=80",
+      date: "18/01/2026",
     },
     {
       id: 3,
-      title: "Tái chế rác thải nhựa đúng cách",
-      img: "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=600&q=80",
-      date: "15/01/2025",
+      title: "Top 5 thẻ Charizard đắt giá nhất lịch sử đấu giá",
+      img: "https://images.unsplash.com/photo-1643101808480-14197c3dc0eb?auto=format&fit=crop&w=600&q=80",
+      date: "15/01/2026",
     },
   ];
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center vh-100 bg-white">
-        <Spinner animation="border" variant="success" />
+      <div
+        className="d-flex justify-content-center align-items-center vh-100"
+        style={{ backgroundColor: "#0a0a0a" }}
+      >
+        <Spinner animation="border" style={{ color: "#d4af37" }} />
       </div>
     );
   }
 
+  // --- UI MỚI TỪ ĐÂY ---
   return (
-    <>
-      {/* 1. HERO SECTION */}
-      <section className="mb-5">
-        <Carousel className="hero-section" interval={4000} fade>
+    <div
+      style={{
+        backgroundColor: "#0a0a0a",
+        color: "#e0e0e0",
+        minHeight: "100vh",
+        fontFamily: "'Inter', sans-serif",
+        overflowX: "hidden",
+      }}
+    >
+      {/* 1. HERO SECTION - Cinematic & Immersive */}
+      <section className="position-relative">
+        <Carousel
+          className="border-0"
+          interval={5000}
+          fade
+          controls={false}
+          indicators={false}
+        >
           <Carousel.Item>
             <div
-              className="hero-slide"
+              className="vw-100 position-relative"
               style={{
+                height: "90vh",
                 backgroundImage:
-                  'url("https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1500&q=80")',
+                  'url("https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?q=80&w=2069&auto=format&fit=crop")',
+                backgroundSize: "cover",
+                backgroundPosition: "center",
               }}
             >
-              <div className="hero-overlay">
-                <div className="hero-content animate-slide-up">
-                  <Badge
-                    bg="warning"
-                    text="dark"
-                    className="mb-3 px-3 py-2 rounded-pill"
+              <div
+                className="position-absolute top-0 start-0 w-100 h-100"
+                style={{
+                  background:
+                    "linear-gradient(to top, #0a0a0a 0%, rgba(10,10,10,0.3) 50%, rgba(10,10,10,0.8) 100%)",
+                }}
+              >
+                <Container
+                  fluid
+                  className="h-100 d-flex flex-column justify-content-center"
+                  style={{ padding: 0 }}
+                >
+                  {" "}
+                  <div
+                    className="p-5 rounded-4 shadow-lg"
+                    style={{
+                      maxWidth: "600px",
+                      backdropFilter: "blur(12px)",
+                      backgroundColor: "rgba(20, 20, 20, 0.4)",
+                    }}
                   >
-                    100% Organic
-                  </Badge>
-                  <h1 className="display-4 fw-bold mb-3">
-                    Thực Phẩm Xanh <br /> Cho Cuộc Sống Lành
-                  </h1>
-                  <p className="lead mb-4 opacity-75">
-                    Tươi ngon từ nông trại đến bàn ăn. Giảm thiểu rác thải.
-                  </p>
-                  <Button
-                    as={Link}
-                    to="/products"
-                    variant="success"
-                    size="lg"
-                    className="rounded-pill px-5 shadow fw-bold border-0"
-                  >
-                    Mua Ngay <FaArrowRight className="ms-2" />
-                  </Button>
-                </div>
+                    <p
+                      className="text-uppercase tracking-widest mb-2"
+                      style={{
+                        color: "#d4af37",
+                        letterSpacing: "3px",
+                        fontSize: "0.85rem",
+                        fontWeight: "600",
+                      }}
+                    >
+                      PSA 10 GEM MINT
+                    </p>
+                    <h1
+                      className="display-4 fw-bold mb-4 text-white"
+                      style={{
+                        fontFamily: "'Playfair Display', serif",
+                        lineHeight: "1.2",
+                      }}
+                    >
+                      Đỉnh Cao Của <br />{" "}
+                      <span style={{ color: "#d4af37" }}>Sự Sưu Tầm</span>
+                    </h1>
+                    <p className="lead mb-5 text-light opacity-75 fs-6">
+                      Khám phá những kiệt tác Holographic hiếm nhất, được kiểm
+                      định chất lượng khắt khe và bảo chứng giá trị nghệ thuật
+                      vượt thời gian.
+                    </p>
+                    <Button
+                      as={Link}
+                      to="/products"
+                      className="rounded-0 px-5 py-3 text-uppercase fw-bold border-0 shadow-sm"
+                      style={{
+                        backgroundColor: "#d4af37",
+                        color: "#0a0a0a",
+                        letterSpacing: "1px",
+                      }}
+                    >
+                      Bước Vào Kho Lưu Trữ <FaArrowRight className="ms-2" />
+                    </Button>
+                  </div>
+                </Container>
               </div>
             </div>
           </Carousel.Item>
-          <Carousel.Item>
-            <div
-              className="hero-slide"
-              style={{
-                backgroundImage:
-                  'url("https://images.unsplash.com/photo-1605647540924-852290f6b0d5?auto=format&fit=crop&w=1500&q=80")',
-              }}
-            >
-              <div className="hero-overlay">
-                <div className="hero-content">
-                  <Badge bg="info" className="mb-3 px-3 py-2 rounded-pill">
-                    Zero Waste
-                  </Badge>
-                  <h1 className="display-4 fw-bold mb-3">
-                    Nói Không Với <br /> Rác Thải Nhựa
-                  </h1>
-                  <p className="lead mb-4 opacity-75">
-                    Bộ sưu tập sản phẩm thân thiện với mẹ thiên nhiên.
-                  </p>
-                  <Button
-                    as={Link}
-                    to="/about"
-                    variant="light"
-                    size="lg"
-                    className="rounded-pill px-5 shadow fw-bold text-success border-0"
-                  >
-                    Khám Phá <FaArrowRight className="ms-2" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Carousel.Item>
+          {/* Bạn có thể thêm các Carousel.Item khác tương tự ở đây */}
         </Carousel>
       </section>
 
-      {/* 2. FEATURES */}
-      <section className="mb-5">
-        <Container>
-          <Row className="g-4">
-            {[
-              {
-                icon: <FaLeaf className="fs-1 text-success" />,
-                title: "100% Tự Nhiên",
-                desc: "Nguồn gốc hữu cơ minh bạch",
-              },
-              {
-                icon: <FaShippingFast className="fs-1 text-primary" />,
-                title: "Giao Hàng Nhanh",
-                desc: "Miễn phí vận chuyển đơn từ 300k",
-              },
-              {
-                icon: <FaMedal className="fs-1 text-warning" />,
-                title: "Chất Lượng Cao",
-                desc: "Được kiểm định nghiêm ngặt",
-              },
-            ].map((item, idx) => (
-              <Col md={4} key={idx}>
-                <div className="d-flex align-items-center bg-white p-4 rounded-4 shadow-sm h-100 border border-light hover-top transition-all">
-                  <div className="me-3">{item.icon}</div>
-                  <div>
-                    <h5 className="fw-bold mb-1">{item.title}</h5>
-                    <p className="text-muted small mb-0">{item.desc}</p>
+      {/* 2. OVERLAPPING FEATURES - Glassmorphism Floating Strip */}
+      <section style={{ marginTop: "-80px", position: "relative", zIndex: 10 }}>
+        <Container style={{ padding: 0 }}>
+          <div
+            className="rounded-4 p-4 shadow-lg"
+            style={{
+              backdropFilter: "blur(20px)",
+              backgroundColor: "rgba(30, 30, 30, 0.7)",
+            }}
+          >
+            <Row className="g-4 text-center text-md-start">
+              {[
+                {
+                  icon: <FaMedal size={32} style={{ color: "#d4af37" }} />,
+                  title: "100% Authentic",
+                  desc: "Kiểm định minh bạch, thẻ thật tuyệt đối",
+                },
+                {
+                  icon: <FaShippingFast size={32} className="text-white" />,
+                  title: "Vận Chuyển Đặc Quyền",
+                  desc: "Toploader & bọc chống sốc cao cấp",
+                },
+                {
+                  icon: <FaLeaf size={32} className="text-success" />,
+                  title: "Mint Condition",
+                  desc: "Tuyển chọn tình trạng hoàn hảo nhất",
+                },
+              ].map((item, idx) => (
+                <Col md={4} key={idx}>
+                  <div className="d-flex flex-column flex-md-row align-items-center justify-content-center justify-content-md-start gap-3">
+                    <div
+                      className="p-3 rounded-circle"
+                      style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                    >
+                      {item.icon}
+                    </div>
+                    <div>
+                      <h6
+                        className="fw-bold mb-1 text-white text-uppercase"
+                        style={{ letterSpacing: "1px", fontSize: "0.9rem" }}
+                      >
+                        {item.title}
+                      </h6>
+                      <p className="text-  small mb-0">{item.desc}</p>
+                    </div>
                   </div>
-                </div>
-              </Col>
-            ))}
-          </Row>
+                </Col>
+              ))}
+            </Row>
+          </div>
         </Container>
       </section>
 
-      {/* 3. CATEGORIES (ĐÃ SỬA LOGIC LẤY DATA) */}
+      {/* 3. CATEGORIES - Graded Slab Style (Hình chữ nhật đứng) */}
       {categories.length > 0 && (
-        <section className="mb-5 text-center">
-          <Container>
-            <h2 className="section-title">Danh Mục Nổi Bật</h2>
-            <Row className="justify-content-center g-4">
+        <section className="py-5 mt-5">
+          <Container style={{ padding: 0 }}>
+            <div className="d-flex justify-content-between align-items-end mb-4">
+              <h2
+                className="fw-bold text-white m-0"
+                style={{ fontFamily: "'Playfair Display', serif" }}
+              >
+                Danh Mục Sưu Tầm
+              </h2>
+              <div
+                style={{
+                  height: "2px",
+                  flexGrow: 1,
+                  backgroundColor: "rgba(212, 175, 55, 0.2)",
+                  margin: "0 20px",
+                  marginBottom: "10px",
+                }}
+              ></div>
+            </div>
+
+            <Row
+              className="g-4 flex-nowrap overflow-auto hide-scrollbar pb-3"
+              style={{ scrollSnapType: "x mandatory" }}
+            >
               {categories.map((cat, idx) => (
-                <Col xs={4} md={2} key={cat._id}>
+                <Col
+                  xs={6}
+                  md={3}
+                  lg={2}
+                  key={cat._id}
+                  style={{ scrollSnapAlign: "start" }}
+                >
                   <Link
                     to={`/products?category=${cat._id}`}
-                    className="text-decoration-none"
+                    className="text-decoration-none group d-block"
                   >
-                    <div className="category-card">
-                      <div className="cat-img-wrapper">
-                        <img
-                          src={getCategoryImage(cat, idx)}
-                          alt={cat.name}
-                          onError={(e) => {
-                            e.target.src = "https://placehold.co/150?text=Eco";
-                          }}
-                        />
-                      </div>
-                      <h6
-                        className="fw-bold text-dark mt-3 text-truncate px-2"
-                        title={cat.name}
+                    <div
+                      className="position-relative overflow-hidden rounded-3 shadow"
+                      style={{
+                        aspectRatio: "3/4",
+                      }}
+                    >
+                      <img
+                        src={getCategoryImage(cat, idx)}
+                        alt={cat.name}
+                        className="w-100 h-100 object-fit-cover opacity-75"
+                        style={{ transition: "transform 0.5s ease" }}
+                        onMouseOver={(e) =>
+                          (e.currentTarget.style.transform = "scale(1.1)")
+                        }
+                        onMouseOut={(e) =>
+                          (e.currentTarget.style.transform = "scale(1)")
+                        }
+                      />
+                      <div
+                        className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-end p-3"
+                        style={{
+                          background:
+                            "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%)",
+                        }}
                       >
-                        {cat.name}
-                      </h6>
+                        <h6
+                          className="fw-bold text-white text-uppercase w-100 text-center m-0"
+                          style={{
+                            fontSize: "0.8rem",
+                            letterSpacing: "2px",
+                            textShadow: "0 2px 4px rgba(0,0,0,0.5)",
+                          }}
+                        >
+                          {cat.name}
+                        </h6>
+                      </div>
                     </div>
                   </Link>
                 </Col>
@@ -290,171 +368,259 @@ const HomePage = () => {
         </section>
       )}
 
-      {/* 4. SẢN PHẨM MỚI (ĐÃ SỬA LOGIC LẤY DATA) */}
-      <section
-        className="mb-5 py-5 bg-light rounded-4"
-        style={{
-          backgroundImage: "linear-gradient(to bottom, #f1f8e9, white)",
-        }}
-      >
-        <Container>
-          <div className="d-flex justify-content-between align-items-end mb-4">
-            <div>
-              <div className="d-flex align-items-center gap-2 mb-1">
-                <h2 className="fw-bold mb-0 text-success">Sản Phẩm Mới</h2>
-                <Badge bg="danger" className="animate-pulse">
-                  New
+      {/* 4. SẢN PHẨM MỚI - Asymmetrical Split Layout */}
+      <section className="py-5 my-5" style={{ backgroundColor: "#111" }}>
+        <Container style={{ padding: 0 }}>
+          <Row className="g-5 align-items-center">
+            {/* Cột trái: Tiêu đề lớn */}
+            <Col lg={4}>
+              <div className="pe-lg-4">
+                <Badge
+                  bg="transparent"
+                  className="text-warning mb-3 px-3 py-2 rounded-0 text-uppercase"
+                  style={{ letterSpacing: "2px" }}
+                >
+                  New Arrivals
                 </Badge>
-              </div>
-              <p className="text-muted mb-0">Những món hàng xanh vừa cập bến</p>
-            </div>
-            <Button
-              as={Link}
-              to="/products"
-              variant="outline-success"
-              className="rounded-pill fw-bold"
-            >
-              Xem tất cả
-            </Button>
-          </div>
-
-          {products.length > 0 ? (
-            <Row xs={1} md={2} lg={4} className="g-4">
-              {products.slice(0, 4).map((product) => (
-                <Col key={product.id}>
-                  <ProductCard
-                    product={product}
-                    onQuickView={handleQuickView}
-                  />
-                </Col>
-              ))}
-            </Row>
-          ) : (
-            <div className="text-center py-5 text-muted">
-              <p>Chưa có sản phẩm nào.</p>
-              {/* Hiển thị nút thêm SP nếu đang dev */}
-              <small>
-                Vui lòng vào Admin thêm sản phẩm hoặc kiểm tra kết nối DB.
-              </small>
-            </div>
-          )}
-        </Container>
-      </section>
-
-      {/* 5. BANNER TĨNH */}
-      <section className="mb-5">
-        <Container>
-          <div
-            className="static-banner rounded-4 overflow-hidden position-relative shadow-sm"
-            style={{ height: "300px" }}
-          >
-            <img
-              src="https://images.unsplash.com/photo-1615486511484-92e172cc4fe0?q=80&w=1740&auto=format&fit=crop"
-              alt="Banner Mùa Hè Xanh Mát"
-              className="w-100 h-100 object-fit-cover"
-            />
-            <div className="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex align-items-center justify-content-center text-center px-3">
-              <div className="text-white" style={{ maxWidth: "700px" }}>
-                <h2 className="fw-bold mb-3 display-5">Mùa Hè Xanh Mát</h2>
-                <p className="fs-5 mb-4 opacity-90">
-                  Khám phá bộ sưu tập nước ép trái cây và rau củ hữu cơ giải
-                  nhiệt mùa hè.
+                <h2
+                  className="display-5 fw-bold text-white mb-4"
+                  style={{ fontFamily: "'Playfair Display', serif" }}
+                >
+                  Kiệt Tác <br /> Vừa Cập Bến
+                </h2>
+                <p className="text-  mb-5" style={{ lineHeight: "1.8" }}>
+                  Những mảnh ghép lịch sử của thế giới TCG vừa được bổ sung vào
+                  hầm chứa. Độ hiếm cao, tình trạng hoàn hảo, sẵn sàng cho những
+                  nhà sưu tầm khó tính nhất.
                 </p>
                 <Button
                   as={Link}
                   to="/products"
-                  variant="light"
-                  size="lg"
-                  className="rounded-pill px-5 fw-bold text-success"
+                  variant="outline-light"
+                  className="rounded-0 px-4 py-2 text-uppercase"
+                  style={{ letterSpacing: "1px" }}
                 >
-                  Mua Ngay
+                  Khám Phá Toàn Bộ
                 </Button>
               </div>
-            </div>
-          </div>
+            </Col>
+
+            {/* Cột phải: Grid sản phẩm */}
+            <Col lg={8}>
+              {products.length > 0 ? (
+                <Row xs={1} sm={2} className="g-4">
+                  {products.slice(0, 4).map((product) => (
+                    <Col key={product.id}>
+                        <div className="bg-dark rounded-3 p-2 h-100 border-0 transition-all hover-glow">
+                        <ProductCard
+                          product={product}
+                          onQuickView={handleQuickView}
+                        />
+                      </div>
+                    </Col>
+                  ))}
+                </Row>
+              ) : (
+                <div className="text-center py-5 rounded-3">
+                  <p className="text-  m-0">Kho lưu trữ hiện đang trống.</p>
+                </div>
+              )}
+            </Col>
+          </Row>
         </Container>
       </section>
 
-      {/* 6. SỐNG XANH & BỀN VỮNG */}
+      {/* 5. PARALLAX STATIC BANNER */}
+      <section className="mb-5 position-relative">
+        <div
+          className="w-100 d-flex align-items-center justify-content-center text-center px-3"
+          style={{
+            height: "450px",
+            backgroundImage:
+              'url("https://images.unsplash.com/photo-1613771404721-1f92d799e49f?q=80&w=2069&auto=format&fit=crop")',
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundAttachment: "fixed", // Hiệu ứng Parallax sang trọng
+          }}
+        >
+          <div
+            className="position-absolute top-0 start-0 w-100 h-100"
+            style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
+          ></div>
+          <div
+            className="position-relative text-white z-1"
+            style={{ maxWidth: "800px" }}
+          >
+            <FaMedal
+              size={48}
+              style={{ color: "#d4af37", marginBottom: "20px" }}
+            />
+            <h2
+              className="fw-bold mb-4 display-4"
+              style={{ fontFamily: "'Playfair Display', serif" }}
+            >
+              Kho Báu Của Những{" "}
+              <span style={{ color: "#d4af37", fontStyle: "italic" }}>
+                Huyền Thoại
+              </span>
+            </h2>
+            <p
+              className="fs-5 mb-5 opacity-75 fw-light mx-auto"
+              style={{ maxWidth: "600px" }}
+            >
+              Hơn cả một đam mê, chúng tôi mang đến cho bạn một danh mục đầu tư
+              nghệ thuật đích thực với giá trị được bảo chứng toàn cầu.
+            </p>
+            <Button
+              as={Link}
+              to="/products"
+              className="rounded-0 px-5 py-3 fw-bold text-dark text-uppercase border-0"
+              style={{ backgroundColor: "#d4af37", letterSpacing: "2px" }}
+            >
+              Săn Tìm Grail Cards
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. THE GRAIL VAULT (Best Sellers) - Museum Layout */}
       {products.length > 4 && (
-        <section className="mb-5">
-          <Container>
+        <section className="py-5 mb-5">
+          <Container style={{ padding: 0 }}>
             <div className="text-center mb-5">
-              <h2 className="section-title">Sống Xanh & Bền Vững</h2>
-              <p className="text-muted w-75 mx-auto">
-                Các sản phẩm được yêu thích nhất tại EcoStore
+              <p
+                className="text-warning text-uppercase mb-2"
+                style={{ letterSpacing: "3px", fontSize: "0.85rem" }}
+              >
+                Most Wanted
               </p>
+              <h2
+                className="fw-bold text-white"
+                style={{
+                  fontFamily: "'Playfair Display', serif",
+                  fontSize: "2.5rem",
+                }}
+              >
+                The Grail Vault
+              </h2>
             </div>
             <Row xs={1} md={2} lg={4} className="g-4">
-              {/* Logic: Lấy 4 sản phẩm tiếp theo (hoặc random nếu bạn thích) */}
               {products.slice(4, 8).map((product) => (
                 <Col key={product.id}>
-                  <ProductCard
-                    product={product}
-                    onQuickView={handleQuickView}
-                  />
+                  <div
+                    className="p-3 h-100 position-relative"
+                    style={{
+                      backgroundColor: "#141414",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    <ProductCard
+                      product={product}
+                      onQuickView={handleQuickView}
+                    />
+                  </div>
                 </Col>
               ))}
             </Row>
-            <div className="text-center mt-5">
-              <Button
-                as={Link}
-                to="/products"
-                variant="outline-success"
-                size="lg"
-                className="rounded-pill px-5"
-              >
-                Xem thêm sản phẩm
-              </Button>
-            </div>
           </Container>
         </section>
       )}
 
-      {/* 7. BLOG */}
-      <section className="mb-5 pb-4">
-        <Container>
-          <h2 className="fw-bold mb-4">Góc Sống Xanh</h2>
+      {/* 7. BLOG - Magazine Style */}
+      <section className="py-5">
+        <Container style={{ padding: 0 }}>
+          <div className="d-flex justify-content-between align-items-end mb-5">
+            <div>
+              <p
+                className="text-warning text-uppercase mb-2"
+                style={{ letterSpacing: "3px", fontSize: "0.85rem" }}
+              >
+                News & Guides
+              </p>
+              <h2
+                className="fw-bold text-white m-0"
+                style={{ fontFamily: "'Playfair Display', serif" }}
+              >
+                Sổ Tay Sưu Tầm
+              </h2>
+            </div>
+            <Link
+              to="/blog"
+              className="text-white text-decoration-none fw-bold small text-uppercase pb-1 border-bottom border-warning"
+            >
+              Đọc tất cả
+            </Link>
+          </div>
+
           <Row className="g-4">
             {blogs.map((blog) => (
               <Col md={4} key={blog.id}>
-                <Card className="blog-card h-100">
-                  <Card.Img variant="top" src={blog.img} className="blog-img" />
-                  <Card.Body>
-                    <div className="text-muted small mb-2 d-flex align-items-center gap-1">
-                      <FaClock size={12} /> {blog.date}
-                    </div>
-                    <Card.Title
-                      className="fw-bold mb-2 fs-5 hover-green"
-                      style={{ cursor: "pointer" }}
-                    >
-                      {blog.title}
-                    </Card.Title>
-                    <Card.Text className="text-muted small">
-                      Khám phá những mẹo nhỏ giúp bạn sống xanh hơn mỗi ngày mà
-                      không tốn quá nhiều công sức...
-                    </Card.Text>
-                    <Button
-                      variant="link"
-                      className="p-0 text-success text-decoration-none fw-bold"
-                    >
-                      Đọc tiếp &rarr;
-                    </Button>
-                  </Card.Body>
-                </Card>
+                <div className="h-100 bg-transparent border-0 group cursor-pointer">
+                  <div
+                    className="overflow-hidden rounded-0 mb-3"
+                    style={{ height: "250px" }}
+                  >
+                    <img
+                      src={blog.img}
+                      alt={blog.title}
+                      className="w-100 h-100 object-fit-cover opacity-75 transition-all"
+                      style={{
+                        transition: "transform 0.6s ease, opacity 0.3s ease",
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = "scale(1.05)";
+                        e.currentTarget.style.opacity = "1";
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.opacity = "0.75";
+                      }}
+                    />
+                  </div>
+                  <div
+                    className="text-  small mb-2 d-flex align-items-center gap-2 text-uppercase"
+                    style={{
+                      fontSize: "0.75rem",
+                      letterSpacing: "1px",
+                      color: "#888",
+                    }}
+                  >
+                    <FaClock size={12} style={{ color: "#d4af37" }} />{" "}
+                    {blog.date}
+                  </div>
+                  <h5
+                    className="fw-bold text-white mb-3"
+                    style={{
+                      fontFamily: "'Playfair Display', serif",
+                      lineHeight: "1.4",
+                    }}
+                  >
+                    {blog.title}
+                  </h5>
+                  <span
+                    className="text-warning text-uppercase"
+                    style={{
+                      fontSize: "0.75rem",
+                      letterSpacing: "1px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Đọc bài viết &rarr;
+                  </span>
+                </div>
               </Col>
             ))}
           </Row>
         </Container>
       </section>
 
-      {/* QUICK VIEW MODAL */}
+      {/* QUICK VIEW MODAL (Giữ nguyên) */}
       <QuickViewModal
         show={showQuickView}
         handleClose={() => setShowQuickView(false)}
         product={selectedProduct}
       />
-    </>
+    </div>
   );
 };
 

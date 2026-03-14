@@ -1,167 +1,590 @@
 /* --- HERO SECTION --- */
 .hero-section {
-    position: relative;
-    overflow: hidden;
-    border-radius: 20px;
-    margin-bottom: 40px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  margin-bottom: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
 .hero-slide {
-    height: 500px;
-    background-size: cover;
-    background-position: center;
-    position: relative;
+  height: 500px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
 }
 
 .hero-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to right, rgba(15, 61, 40, 0.9) 0%, rgba(30, 100, 50, 0.4) 60%, transparent 100%);
-    display: flex;
-    align-items: center;
-    padding-left: 80px;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    rgba(15, 61, 40, 0.9) 0%,
+    rgba(30, 100, 50, 0.4) 60%,
+    transparent 100%
+  );
+  display: flex;
+  align-items: center;
+  padding-left: 80px;
 }
 
 .hero-content {
-    max-width: 600px;
-    color: white;
-    z-index: 2;
+  max-width: 600px;
+  color: white;
+  z-index: 2;
 }
 
 /* Animations */
 .animate-slide-up {
-    animation: slideUp 0.8s ease-out;
+  animation: slideUp 0.8s ease-out;
 }
 
 @keyframes slideUp {
-    from { opacity: 0; transform: translateY(30px); }
-    to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-pulse {
-    animation: pulse 2s infinite;
+  animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* --- CATEGORY CIRCLES --- */
 .category-card {
-    transition: transform 0.3s ease;
-    cursor: pointer;
+  transition: transform 0.3s ease;
+  cursor: pointer;
 }
 
 .category-card:hover {
-    transform: translateY(-10px);
+  transform: translateY(-10px);
 }
 
 .cat-img-wrapper {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    overflow: hidden;
-    margin: 0 auto 15px;
-    border: 3px solid rgba(76, 175, 80, 0.2);
-    position: relative;
-    background: white;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin: 0 auto 15px;
+  border: 3px solid rgba(76, 175, 80, 0.2);
+  position: relative;
+  background: white;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .category-card:hover .cat-img-wrapper {
-    border-color: #2e7d32; /* Eco primary color */
-    box-shadow: 0 8px 20px rgba(46, 125, 50, 0.3);
+  border-color: #2e7d32; /* Eco primary color */
+  box-shadow: 0 8px 20px rgba(46, 125, 50, 0.3);
 }
 
 .cat-img-wrapper img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.5s ease;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
 }
 
 .category-card:hover img {
-    transform: scale(1.1);
+  transform: scale(1.1);
 }
 
 /* --- SECTION HEADERS --- */
 .section-title {
-    position: relative;
-    display: inline-block;
-    margin-bottom: 30px;
-    font-weight: 800;
-    color: #2e7d32;
+  position: relative;
+  display: inline-block;
+  margin-bottom: 30px;
+  font-weight: 800;
+  color: #2e7d32;
 }
 
 .section-title::after {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 50px;
-    height: 4px;
-    background: #2e7d32;
-    border-radius: 2px;
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 4px;
+  background: #2e7d32;
+  border-radius: 2px;
 }
 
 /* --- BLOG CARDS --- */
 .blog-card {
-    border: none;
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    transition: transform 0.3s ease;
-    background: white;
+  border: none;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease;
+  background: white;
 }
 
 .blog-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 .blog-img {
-    height: 200px;
-    object-fit: cover;
+  height: 200px;
+  object-fit: cover;
 }
 
 .hover-green:hover {
-    color: #2e7d32 !important;
+  color: #2e7d32 !important;
 }
 
 /* --- RESPONSIVE --- */
 @media (max-width: 768px) {
-    .hero-slide {
-        height: 350px;
-        background-position: center;
-    }
-    
-    .hero-overlay {
-        padding-left: 20px;
-        padding-right: 20px;
-        background: rgba(0,0,0,0.5);
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-    }
+  .hero-slide {
+    height: 350px;
+    background-position: center;
+  }
 
-    .cat-img-wrapper {
-        width: 80px;
-        height: 80px;
-    }
+  .hero-overlay {
+    padding-left: 20px;
+    padding-right: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
 
-    .hero-content h1 {
-        font-size: 2rem;
-    }
-    
-    .section-title {
-        font-size: 1.5rem;
-    }
+  .cat-img-wrapper {
+    width: 80px;
+    height: 80px;
+  }
+
+  .hero-content h1 {
+    font-size: 2rem;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
 }
+.luxury-serif {
+  font-family: "Playfair Display", serif;
+}
+.tracking-widest {
+  letter-spacing: 0.15em;
+}
+.text-gold {
+  color: #d4af37;
+} /* Màu vàng Gold đặc trưng */
+
+.nav-link-luxury {
+  color: #1a1a1a;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-decoration: none;
+  transition: opacity 0.3s;
+}
+
+.nav-link-luxury:hover,
+.nav-link-luxury.active {
+  color: #d4af37;
+  opacity: 0.8;
+}
+
+.user-avatar-frame {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.user-avatar-frame:hover {
+  border-color: #d4af37;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+/* --- BIẾN TOÀN CỤC --- */
+:root {
+  --primary-gold: #d4af37;
+  --dark-bg: #0a0a0a;
+  --card-dark: #141414;
+  --text-gray: #a0a0a0;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --holo-gradient: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+/* --- HIỆU ỨNG NỀN VÀ CHỮ --- */
+body {
+  background-color: var(--dark-bg);
+  color: #ffffff;
+}
+
+.luxury-serif {
+  font-family: "Playfair Display", serif;
+}
+
+.tracking-widest {
+  letter-spacing: 4px;
+}
+
+/* --- HERO SECTION --- */
+.hero-slide {
+  transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hero-overlay {
+  transition: all 0.5s ease;
+}
+
+/* Chữ trượt từ dưới lên mượt mà */
+.animate-slide-up {
+  animation: slideUp 1s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+@keyframes slideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+    filter: blur(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* --- CATEGORY SLAB UI (Dáng thẻ bài dọc) --- */
+.category-card {
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.category-card:hover {
+  transform: translateY(-12px) scale(1.03);
+}
+
+/* Hiệu ứng tia sáng quét qua khi hover (Holographic Flash) */
+.category-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: var(--holo-gradient);
+  transform: skewX(-25deg);
+  transition: none;
+}
+
+.category-card:hover::after {
+  left: 150%;
+  transition: all 0.6s ease;
+}
+
+/* --- PRODUCT CARD WRAPPER & HOVER GLOW --- */
+.hover-glow {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.hover-glow:hover {
+  border-color: var(--primary-gold) !important;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+  transform: translateY(-5px);
+}
+
+/* Hiệu ứng mạch đập cho nhãn HOT */
+.animate-pulse {
+  animation: pulse-gold 2s infinite;
+  box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7);
+}
+
+@keyframes pulse-gold {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(212, 175, 55, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
+  }
+}
+
+/* --- BLOG CARD MAGAZINE STYLE --- */
+.blog-card {
+  background: transparent !important;
+  transition: all 0.4s ease;
+}
+
+.blog-img {
+  transition: transform 0.8s scale(1.1);
+  filter: grayscale(30%);
+}
+
+.blog-card:hover .blog-img {
+  filter: grayscale(0%);
+  transform: scale(1.08);
+}
+
+/* --- HIỆU ỨNG KÍNH (GLASSMORPHISM) --- */
+.glass-panel {
+  backdrop-filter: blur(15px);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- CUSTOM SCROLLBAR CHO CATEGORY --- */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Ẩn thanh cuộn mặc định */
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Thêm hiệu ứng hover cho các nút bấm Luxury */
+.btn-warning {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.btn-warning:hover {
+  background-color: #fff !important;
+  color: #000 !important;
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
+}
+
+/* --- RESPONSIVE ADJUSTMENTS --- */
+@media (max-width: 768px) {
+  .hero-slide {
+    height: 60vh !important;
+  }
+
+  .display-4 {
+    font-size: 2.2rem;
+  }
+
+  .p-5 {
+    padding: 1.5rem !important;
+  }
+}
+/* --- BIẾN TOÀN CỤC --- */
+:root {
+  --primary-gold: #d4af37;
+  --dark-bg: #0a0a0a;
+  --card-dark: #141414;
+  --text-gray: #a0a0a0;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --holo-gradient: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+/* --- HIỆU ỨNG NỀN VÀ CHỮ --- */
+body {
+  background-color: var(--dark-bg);
+  color: #ffffff;
+}
+
+.luxury-serif {
+  font-family: "Playfair Display", serif;
+}
+
+.tracking-widest {
+  letter-spacing: 4px;
+}
+
+/* --- HERO SECTION --- */
+.hero-slide {
+  transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hero-overlay {
+  transition: all 0.5s ease;
+}
+
+/* Chữ trượt từ dưới lên mượt mà */
+.animate-slide-up {
+  animation: slideUp 1s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+@keyframes slideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+    filter: blur(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* --- CATEGORY SLAB UI (Dáng thẻ bài dọc) --- */
+.category-card {
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.category-card:hover {
+  transform: translateY(-12px) scale(1.03);
+}
+
+/* Hiệu ứng tia sáng quét qua khi hover (Holographic Flash) */
+.category-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: var(--holo-gradient);
+  transform: skewX(-25deg);
+  transition: none;
+}
+
+.category-card:hover::after {
+  left: 150%;
+  transition: all 0.6s ease;
+}
+
+/* --- PRODUCT CARD WRAPPER & HOVER GLOW --- */
+.hover-glow {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.hover-glow:hover {
+  border-color: var(--primary-gold) !important;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+  transform: translateY(-5px);
+}
+
+/* Hiệu ứng mạch đập cho nhãn HOT */
+.animate-pulse {
+  animation: pulse-gold 2s infinite;
+  box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7);
+}
+
+@keyframes pulse-gold {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(212, 175, 55, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
+  }
+}
+
+/* --- BLOG CARD MAGAZINE STYLE --- */
+.blog-card {
+  background: transparent !important;
+  transition: all 0.4s ease;
+}
+
+.blog-img {
+  transition: transform 0.8s scale(1.1);
+  filter: grayscale(30%);
+}
+
+.blog-card:hover .blog-img {
+  filter: grayscale(0%);
+  transform: scale(1.08);
+}
+
+/* --- HIỆU ỨNG KÍNH (GLASSMORPHISM) --- */
+.glass-panel {
+  backdrop-filter: blur(15px);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- CUSTOM SCROLLBAR CHO CATEGORY --- */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Ẩn thanh cuộn mặc định */
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Thêm hiệu ứng hover cho các nút bấm Luxury */
+.btn-warning {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.btn-warning:hover {
+  background-color: #fff !important;
+  color: #000 !important;
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
+}
+
+/* --- RESPONSIVE ADJUSTMENTS --- */
+@media (max-width: 768px) {
+  .hero-slide {
+    height: 60vh !important;
+  }
+
+  .display-4 {
+    font-size: 2.2rem;
+  }
+
+  .p-5 {
+    padding: 1.5rem !important;
+  }
+}
+.text-gold { color: #d4af37; }
+.hover-gold:hover { color: #d4af37 !important; opacity: 1 !important; }
+.cart-hover:hover { border-color: #d4af37 !important; background: rgba(212,175,55,0.1); }
+.transition-all { transition: all 0.3s ease; }

@@ -6,15 +6,13 @@ import Footer from '../components/common/Footer';
 
 const MainLayout = () => {
   return (
-    <div className="d-flex flex-column min-vh-100 bg-light">
+    <div className="d-flex flex-column min-vh-100">
       {/* Header mới */}
       <Header />
 
       {/* Nội dung chính */}
-      <main className="flex-grow-1 py-4">
-        <Container>
-           <Outlet /> 
-        </Container>
+      <main className="flex-grow-1">
+        <Outlet />
       </main>
 
       {/* Footer (Giữ tạm hoặc tách ra file riêng sau) */}
