@@ -113,7 +113,6 @@ const CartPage = () => {
     .step-item-premium.active .step-text { color: #d4af37; }
   `;
 
-  // --- RENDER ---
   if (!user) {
     return (
       <div className="bg-dark-premium min-vh-100 d-flex align-items-center">
@@ -179,15 +178,15 @@ const CartPage = () => {
         {/* Step Wizard Nâng cấp */}
         <div className="step-wizard-premium">
           <div className="step-item-premium active">
-            <div className="step-circle">1</div>
+            <div className="shadow-gold step-circle">1</div>
             <span className="step-text">Giỏ hàng</span>
           </div>
           <div className="step-item-premium">
-            <div className="step-circle">2</div>
+            <div className=" shadow-gold step-circle">2</div>
             <span className="step-text">Thanh toán</span>
           </div>
           <div className="step-item-premium">
-            <div className="step-circle">3</div>
+            <div className="shadow-gold  step-circle">3</div>
             <span className="step-text">Hoàn tất</span>
           </div>
         </div>
@@ -344,111 +343,132 @@ const CartPage = () => {
           </Col>
 
           {/* RIGHT: SUMMARY */}
-          <Col lg={4}>
-            <div className="card-dark sticky-top" style={{ top: "100px" }}>
-              <div className="p-4 border-bottom border-secondary">
-                <h5 className="fw-bold mb-0 text-white d-flex align-items-center gap-2">
-                  <FaShieldAlt className="text-gold" /> Tổng kết giao dịch
+          <Col lg={4} className="order-lg-last">
+            <div
+              className="card-dark sticky-top rounded-4 overflow-hidden"
+              style={{
+                top: "100px", // điều chỉnh nếu header cao hơn
+                zIndex: 100, // đảm bảo luôn ở trên
+                background: "linear-gradient(145deg, #141414, #0f0f0f)",
+                border: "1px solid rgba(212,175,55,0.25)",
+                boxShadow:
+                  "0 10px 30px rgba(0,0,0,0.6), inset 0 0 20px rgba(212,175,55,0.08)",
+              }}
+            >
+              {/* Header Tổng kết */}
+              <div className="p-4 border-bottom border-gold border-opacity-25 bg-black bg-opacity-50">
+                <h5 className="fw-bold mb-0 text-gold d-flex align-items-center gap-2">
+                  <FaShieldAlt /> Tổng kết giao dịch
                 </h5>
               </div>
 
               <div className="p-4">
                 {/* Freeship Progress */}
-                <div className="mb-4 p-3 rounded-3 bg-black">
+                <div className="mb-4 p-3 rounded-3 bg-dark border border-gold border-opacity-10">
                   {subtotal > 0 ? (
                     <>
                       {subtotal < FREESHIP_THRESHOLD ? (
                         <p className="mb-2 small text-secondary">
-                          Chỉ cần{" "}
+                          Chỉ cần thêm{" "}
                           <span className="text-gold fw-bold">
                             {(FREESHIP_THRESHOLD - subtotal).toLocaleString()} đ
                           </span>{" "}
-                          nữa để nhận Freeship
+                          để nhận Freeship
                         </p>
                       ) : (
-                        <p className="mb-2 small text-gold fw-bold">
-                          <FaCheckCircle className="me-1" /> Đủ điều kiện
-                          Freeship
+                        <p className="mb-2 small text-gold fw-bold d-flex align-items-center gap-2">
+                          <FaCheckCircle /> Đủ điều kiện Freeship
                         </p>
                       )}
-                      <ProgressBar
-                        now={progress}
-                        className="custom-progress rounded-pill bg-dark"
-                        style={{ height: "8px" }}
-                      />
+                      <div
+                        className="progress rounded-pill"
+                        style={{ height: "10px", background: "#2a2a2a" }}
+                      >
+                        <div
+                          className="progress-bar bg-gold"
+                          role="progressbar"
+                          style={{ width: `${progress}%` }}
+                          aria-valuenow={progress}
+                          aria-valuemin="0"
+                          aria-valuemax="100"
+                        ></div>
+                      </div>
                     </>
                   ) : (
-                    <p className="mb-0 small text-secondary">
-                      Chọn sản phẩm để xem ưu đãi vận chuyển.
+                    <p className="mb-0 small text-secondary text-center">
+                      Chọn sản phẩm để xem ưu đãi vận chuyển
                     </p>
                   )}
                 </div>
 
-                {/* Voucher Input */}
-                <div className="mb-4">
-                  <label className="form-label small fw-bold text-secondary">
+                {/* Voucher */}
+                <div className="mb-5">
+                  <label className="form-label small fw-bold text-gold mb-2">
                     MÃ ĐẶC QUYỀN / VOUCHER
                   </label>
-                  <InputGroup>
-                    <InputGroup.Text className="bg-dark border-secondary text-gold border-end-0">
+                  <div className="input-group rounded-pill overflow-hidden border border-gold border-opacity-30">
+                    <span className="input-group-text bg-dark border-0 text-gold">
                       <FaTicketAlt />
-                    </InputGroup.Text>
+                    </span>
                     <Form.Control
-                      placeholder="Nhập mã của bạn"
-                      className="bg-dark text-white border-secondary border-start-0 border-end-0 shadow-none"
+                      placeholder="Nhập mã khuyến mãi"
+                      className="bg-dark text-white border-0 shadow-none"
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value)}
                     />
                     <Button
-                      variant="outline-warning"
-                      className="border-secondary text-gold"
+                      variant="outline-gold"
+                      className="border-gold text-gold px-4 hover-lift"
                       onClick={() =>
-                        alert("Tính năng Voucher đang phát triển!")
+                        alert("Tính năng áp dụng voucher đang được phát triển!")
                       }
                     >
                       Áp dụng
                     </Button>
-                  </InputGroup>
+                  </div>
                 </div>
 
-                {/* Bill Details */}
-                <div className="d-flex justify-content-between mb-3 text-secondary">
-                  <span>Tạm tính</span>
-                  <span className="text-white">
-                    {subtotal.toLocaleString()} đ
-                  </span>
-                </div>
-
-                <div className="d-flex justify-content-between mb-3 text-secondary">
-                  <span>Phí vận chuyển</span>
-                  {subtotal === 0 ? (
-                    <span className="text-white">0 đ</span>
-                  ) : isFreeShip ? (
-                    <span className="text-gold fw-bold">Miễn phí</span>
-                  ) : (
+                {/* Chi tiết hóa đơn */}
+                <div className="mb-4">
+                  <div className="d-flex justify-content-between mb-3 text-secondary small">
+                    <span>Tạm tính</span>
                     <span className="text-white">
-                      {currentShippingFee.toLocaleString()} đ
+                      {subtotal.toLocaleString()} đ
                     </span>
-                  )}
+                  </div>
+
+                  <div className="d-flex justify-content-between mb-3 text-secondary small">
+                    <span>Phí vận chuyển</span>
+                    {subtotal === 0 ? (
+                      <span className="text-white">0 đ</span>
+                    ) : isFreeShip ? (
+                      <span className="text-gold fw-bold">Miễn phí</span>
+                    ) : (
+                      <span className="text-white">
+                        {currentShippingFee.toLocaleString()} đ
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="d-flex justify-content-between mb-4 pb-3 border-bottom border-secondary">
+                    <span className="text-secondary">Chiết khấu</span>
+                    <span className="text-gold fw-bold">- 0 đ</span>
+                  </div>
+
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="fw-bold fs-5 text-white">Tổng cộng</span>
+                    <span
+                      className="fw-bold fs-4 text-gold"
+                      style={{ textShadow: "0 0 8px rgba(212,175,55,0.4)" }}
+                    >
+                      {finalTotal.toLocaleString()} đ
+                    </span>
+                  </div>
                 </div>
 
-                <div className="d-flex justify-content-between mb-4 pb-4 border-bottom border-secondary">
-                  <span className="text-secondary">Chiết khấu</span>
-                  <span className="text-gold">- 0 đ</span>
-                </div>
-
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                  <span className="fw-bold fs-5 text-white">Tổng cộng</span>
-                  <span
-                    className="fw-bold fs-3 text-gold"
-                    style={{ textShadow: "0 0 10px rgba(212,175,55,0.3)" }}
-                  >
-                    {finalTotal.toLocaleString()} đ
-                  </span>
-                </div>
-
+                {/* Nút thanh toán */}
                 <Button
-                  className="btn-gold w-100 py-3 rounded-3 d-flex justify-content-center align-items-center gap-2 fs-5 transition-all"
+                  className="w-100 py-3 fs-5 fw-bold rounded-pill btn-gold-gradient shadow-gold hover-lift d-flex align-items-center justify-content-center gap-2"
                   onClick={() => navigate("/checkout")}
                   disabled={selectedItems.length === 0}
                 >

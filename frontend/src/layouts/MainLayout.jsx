@@ -1,8 +1,8 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import { Container } from 'react-bootstrap';
-import Header from '../components/common/Header'; // Import Header mới
-import Footer from '../components/common/Footer';
+import React from "react";
+import { Outlet } from "react-router-dom";
+import { Container } from "react-bootstrap";
+import Header from "../components/common/Header"; // Import Header mới
+import Footer from "../components/common/Footer";
 
 const MainLayout = () => {
   return (

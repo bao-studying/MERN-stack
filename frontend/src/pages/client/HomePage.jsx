@@ -411,7 +411,7 @@ const HomePage = () => {
                 <Row xs={1} sm={2} className="g-4">
                   {products.slice(0, 4).map((product) => (
                     <Col key={product.id}>
-                        <div className="bg-dark rounded-3 p-2 h-100 border-0 transition-all hover-glow">
+                      <div className="bg-dark rounded-3 p-2 h-100 border-0 transition-all hover-glow">
                         <ProductCard
                           product={product}
                           onQuickView={handleQuickView}

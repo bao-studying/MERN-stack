@@ -13,24 +13,27 @@ import {
   FaShoppingCart,
   FaUserCircle,
   FaSearch,
-  FaCrown, // Thay FaLeaf bằng FaCrown cho sang hoặc giữ nguyên tùy bạn
+  FaCrown,
   FaBars,
   FaSignInAlt,
   FaUserPlus,
   FaSignOutAlt,
   FaBoxOpen,
-  FaHeart,
   FaGem,
 } from "react-icons/fa";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useCart } from "../../hooks/useCart";
+import { IoFootball } from "react-icons/io5"; // IoFootball có hình dạng rất giống Poké Ball
 
 const Header = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const { user, logout } = useAuth();
   const { cartCount } = useCart();
+
   const isLoggedIn = !!user;
+  const isAdmin = isLoggedIn && user?.role === "admin"; // ← kiểm tra role admin
+
   const userAvatar = user?.avatarUrl;
   const userName = user?.name || "User";
 
@@ -53,12 +56,12 @@ const Header = () => {
         className="sticky-top py-3"
         style={{
           zIndex: 1020,
-          backgroundColor: "#0a0a0a", // Nền đen sâu
+          backgroundColor: "#0a0a0a",
           backdropFilter: "blur(10px)",
         }}
       >
         <Container style={{ padding: 0 }}>
-          {/* LOGO - LUXURY STYLE */}
+          {/* LOGO */}
           <Navbar.Brand
             as={Link}
             to="/"
@@ -70,10 +73,65 @@ const Header = () => {
                 background: "linear-gradient(135deg, #d4af37, #f9e297)",
               }}
             >
-              <FaGem className="text-dark" size={20} />
+              <div
+                style={{
+                  position: "relative",
+                  display: "inline-block",
+                  width: "32px",
+                  height: "32px",
+                }}
+              >
+                {/* Nửa trên màu đỏ */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "50%",
+                    backgroundColor: "#FF0000",
+                    borderTopLeftRadius: "16px",
+                    borderTopRightRadius: "16px",
+                    border: "2px solid #000",
+                    borderBottom: "1px solid #000", // Đường kẻ ngang ở giữa
+                  }}
+                ></div>
+
+                {/* Nửa dưới màu trắng */}
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "50%",
+                    backgroundColor: "#fff",
+                    borderBottomLeftRadius: "16px",
+                    borderBottomRightRadius: "16px",
+                    border: "2px solid #000",
+                    borderTop: "none",
+                  }}
+                ></div>
+
+                {/* Vòng tròn nút bấm ở giữa */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "10px",
+                    height: "10px",
+                    backgroundColor: "#fff",
+                    borderRadius: "50%",
+                    border: "2px solid #000",
+                    zIndex: 2,
+                  }}
+                ></div>
+              </div>{" "}
             </div>
             <span style={{ color: "#d4af37", letterSpacing: "1px" }}>
-              TCG STORE
+              BAO Po_Box
             </span>
           </Navbar.Brand>
 
@@ -102,7 +160,7 @@ const Header = () => {
           </div>
 
           <Navbar.Collapse id="basic-navbar-nav" className="d-none d-lg-flex">
-            {/* SEARCH BAR - DARK THEME */}
+            {/* SEARCH BAR */}
             <div
               className="mx-auto w-100 px-lg-5"
               style={{ maxWidth: "500px" }}
@@ -134,7 +192,6 @@ const Header = () => {
               </Form>
             </div>
 
-            {/* NAVIGATION LINKS */}
             <div className="d-flex align-items-center gap-4">
               <Nav
                 className="d-flex gap-4 fw-medium text-uppercase"
@@ -145,6 +202,7 @@ const Header = () => {
                   { path: "/products", label: "Sản phẩm" },
                   { path: "/offers", label: "Ưu đãi" },
                   { path: "/about", label: "Về chúng tôi" },
+                  ...(isAdmin ? [{ path: "/admin", label: "Dashboard" }] : []),
                 ].map((link) => (
                   <NavLink
                     key={link.path}
@@ -165,7 +223,7 @@ const Header = () => {
                 style={{ height: "25px" }}
               ></div>
 
-              {/* USER & CART ACTIONS */}
+              {/* USER & CART */}
               <div className="d-flex align-items-center gap-3">
                 <Link
                   to="/cart"
@@ -230,7 +288,13 @@ const Header = () => {
                             Chào {userName}
                           </div>
                           <small className="text-muted">{user?.email}</small>
+                          {isAdmin && (
+                            <Badge bg="danger" className="mt-1">
+                              Admin
+                            </Badge>
+                          )}
                         </div>
+
                         <Dropdown.Item
                           as={Link}
                           to="/profile"
@@ -238,6 +302,17 @@ const Header = () => {
                         >
                           <FaUserCircle className="me-2 text-gold" /> Tài khoản
                         </Dropdown.Item>
+
+                        {isAdmin && (
+                          <Dropdown.Item
+                            as={Link}
+                            to="/admin"
+                            className="text-warning py-2 hover-dark-gold fw-semibold"
+                          >
+                            <FaCrown className="me-2" /> Quản trị
+                          </Dropdown.Item>
+                        )}
+
                         <Dropdown.Item
                           as={Link}
                           to="/profile?tab=orders"
@@ -245,7 +320,9 @@ const Header = () => {
                         >
                           <FaBoxOpen className="me-2 text-gold" /> Đơn mua
                         </Dropdown.Item>
+
                         <Dropdown.Divider className="bg-secondary" />
+
                         <Dropdown.Item
                           onClick={logout}
                           className="text-danger py-2 fw-bold"
@@ -281,7 +358,7 @@ const Header = () => {
         </Container>
       </Navbar>
 
-      {/* MOBILE MENU - DARK VERSION */}
+      {/* MOBILE MENU */}
       <Offcanvas
         show={showMobileMenu}
         onHide={() => setShowMobileMenu(false)}
@@ -309,35 +386,53 @@ const Header = () => {
           </Form>
 
           <Nav className="flex-column gap-3 fs-5">
-            {["Trang chủ", "Sản phẩm", "Ưu đãi", "Giới thiệu"].map(
-              (item, idx) => (
-                <Nav.Link
-                  key={idx}
-                  as={Link}
-                  to={
-                    idx === 0
-                      ? "/"
-                      : `/${["products", "offers", "about"][idx - 1]}`
-                  }
-                  onClick={() => setShowMobileMenu(false)}
-                  className="text-white border-bottom border-secondary pb-2 opacity-75"
-                >
-                  {item}
-                </Nav.Link>
-              ),
-            )}
+            {[
+              { label: "Trang chủ", path: "/" },
+              { label: "Sản phẩm", path: "/products" },
+              { label: "Ưu đãi", path: "/offers" },
+              { label: "Giới thiệu", path: "/about" },
+              ...(isAdmin
+                ? [{ label: "Quản trị", path: "/admin/dashboard" }]
+                : []),
+            ].map((item, idx) => (
+              <Nav.Link
+                key={idx}
+                as={Link}
+                to={item.path}
+                onClick={() => setShowMobileMenu(false)}
+                className={`border-bottom border-secondary pb-2 opacity-75 ${
+                  item.label === "Quản trị"
+                    ? "text-warning fw-bold"
+                    : "text-white"
+                }`}
+              >
+                {item.label}
+              </Nav.Link>
+            ))}
           </Nav>
 
           <div className="mt-auto mb-4 d-grid gap-3">
             {isLoggedIn ? (
-              <Button
-                variant="outline-warning"
-                onClick={logout}
-                className="rounded-pill"
-              >
-                {" "}
-                Đăng xuất{" "}
-              </Button>
+              <>
+                {isAdmin && (
+                  <Button
+                    as={Link}
+                    to="/admin/dashboard"
+                    variant="outline-warning"
+                    className="rounded-pill fw-bold"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    Quản trị Dashboard
+                  </Button>
+                )}
+                <Button
+                  variant="outline-warning"
+                  onClick={logout}
+                  className="rounded-pill"
+                >
+                  Đăng xuất
+                </Button>
+              </>
             ) : (
               <>
                 <Button
