@@ -1,114 +1,156 @@
 /* --- VOUCHER TICKET STYLE --- */
 .voucher-ticket {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    position: relative;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    border: 1px solid rgba(0,0,0,0.05);
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .voucher-ticket:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(46, 125, 50, 0.15);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(46, 125, 50, 0.15);
 }
 
 /* Phần trái (Màu sắc/Icon) */
 .voucher-left {
-    background: var(--gradient-main); /* Mặc định */
-    color: white;
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    min-height: 100px;
+  background: var(--gradient-main); /* Mặc định */
+  color: white;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 100px;
 }
 
 /* Các biến thể màu voucher */
-.voucher-shipping .voucher-left { background: linear-gradient(135deg, #2193b0, #6dd5ed); }
-.voucher-vip .voucher-left { background: linear-gradient(135deg, #f12711, #f5af19); }
-.voucher-new .voucher-left { background: linear-gradient(135deg, #11998e, #38ef7d); }
+.voucher-shipping .voucher-left {
+  background: linear-gradient(135deg, #2193b0, #6dd5ed);
+}
+.voucher-vip .voucher-left {
+  background: linear-gradient(135deg, #f12711, #f5af19);
+}
+.voucher-new .voucher-left {
+  background: linear-gradient(135deg, #11998e, #38ef7d);
+}
 
 /* Hiệu ứng răng cưa (Sawtooth) hoặc bo tròn giữa 2 phần */
 .voucher-left::after {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 0;
-    width: 100%;
-    height: 10px;
-    background-image: radial-gradient(circle, transparent 5px, white 6px);
-    background-size: 15px 15px;
-    background-position: bottom;
-    display: none; /* Dùng border-dash cho đơn giản hơn */
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  background-image: radial-gradient(circle, transparent 5px, white 6px);
+  background-size: 15px 15px;
+  background-position: bottom;
+  display: none; /* Dùng border-dash cho đơn giản hơn */
 }
 
 /* Đường kẻ đứt đoạn chia cắt */
 .voucher-divider {
-    height: 2px;
-    background-image: linear-gradient(to right, #ccc 50%, transparent 50%);
-    background-size: 15px 100%;
-    margin: 0 15px;
+  height: 2px;
+  background-image: linear-gradient(to right, #ccc 50%, transparent 50%);
+  background-size: 15px 100%;
+  margin: 0 15px;
 }
 
 /* --- ABOUT PAGE STYLES --- */
 .founder-card {
-    background: rgba(255, 255, 255, 0.8);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+  background: rgba(255, 255, 255, 0.8);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
 }
 
 .founder-img {
-    height: 400px;
-    object-fit: cover;
-    width: 100%;
-    border-radius: 20px;
+  height: 400px;
+  object-fit: cover;
+  width: 100%;
+  border-radius: 20px;
 }
 
 .timeline-item {
-    position: relative;
-    padding-left: 40px;
-    margin-bottom: 40px;
-    border-left: 3px solid var(--eco-light);
+  position: relative;
+  padding-left: 40px;
+  margin-bottom: 40px;
+  border-left: 3px solid var(--eco-light);
 }
 
 .timeline-item::before {
-    content: '';
-    position: absolute;
-    left: -10px;
-    top: 0;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--eco-primary);
-    border: 3px solid white;
-    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.2);
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--eco-primary);
+  border: 3px solid white;
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.2);
 }
 
 /* Google Map Frame */
 .map-container iframe {
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    filter: grayscale(20%) contrast(1.1); /* Hiệu ứng map hiện đại */
-    transition: filter 0.3s;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  filter: grayscale(20%) contrast(1.1); /* Hiệu ứng map hiện đại */
+  transition: filter 0.3s;
 }
 .map-container iframe:hover {
-    filter: grayscale(0%);
+  filter: grayscale(0%);
 }
 
 /* --- RESPONSIVE --- */
 @media (max-width: 768px) {
-    .founder-img {
-        height: 300px;
-    }
-    .voucher-left {
-        min-height: 80px;
-    }
+  .founder-img {
+    height: 300px;
+  }
+  .voucher-left {
+    min-height: 80px;
+  }
+}
+.text-shadow-lg {
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+.hover-lift:hover {
+  transform: translateY(-8px);
+  transition: all 0.3s ease;
+}
+.bg-gradient-dark {
+  background: linear-gradient(135deg, #0f0f1a, #1a1a2e);
+}
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #ff0000, #ff6600, #0066cc);
+}
+.timeline-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+.timeline-item {
+  position: relative;
+  padding-left: 60px;
+}
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  left: 20px;
+  top: 0;
+  bottom: -30px;
+  width: 4px;
+  background: linear-gradient(to bottom, #ffcc00, #ff0000);
+}
+.timeline-year {
+  min-width: 80px;
+  text-align: right;
 }

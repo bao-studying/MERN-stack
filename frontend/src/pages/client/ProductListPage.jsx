@@ -233,7 +233,7 @@ const ProductListPage = () => {
             className="display-3 fw-bold luxury-serif mb-3"
             style={{ letterSpacing: "2px" }}
           >
-            CỬA HÀNG XANH
+            HỘP BÀI POKEMON{" "}
           </h1>
           <nav aria-label="breadcrumb">
             <ol className="breadcrumb justify-content-center bg-transparent">

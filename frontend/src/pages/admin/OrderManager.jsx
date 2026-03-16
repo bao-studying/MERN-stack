@@ -1,282 +1,421 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Row, Col, Table, Button, Form, InputGroup, Badge, Pagination, Spinner } from 'react-bootstrap';
-import { FaSearch, FaFilter, FaEye, FaDownload, FaShoppingBag, FaCheckCircle, FaTruck, FaClock, FaTimesCircle } from 'react-icons/fa';
-import OrderDetailModal from '../../components/admin/OrderDetailModal';
-import orderApi from '../../services/order.service';
-import toast from 'react-hot-toast';
-import '../../assets/styles/admin.css';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Row,
+  Col,
+  Table,
+  Button,
+  Form,
+  InputGroup,
+  Badge,
+  Pagination,
+  Spinner,
+  Alert,
+} from "react-bootstrap";
+import {
+  FaSearch,
+  FaFilter,
+  FaEye,
+  FaDownload,
+  FaShoppingBag,
+  FaCheckCircle,
+  FaTruck,
+  FaClock,
+  FaTimesCircle,
+} from "react-icons/fa";
+import OrderDetailModal from "../../components/admin/OrderDetailModal";
+import orderApi from "../../services/order.service";
+import toast from "react-hot-toast";
+import "../../assets/styles/admin.css";
+import { useSearchParams } from "react-router-dom";
 
 const OrderManager = () => {
-  const [searchParams, setSearchParams] = useSearchParams(); // <--- 2. HOOK URL
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // --- 3. LẤY GIÁ TRỊ TỪ URL (Thay cho useState mặc định) ---
-  const filterStatus = searchParams.get('status') || 'All';
-  const currentPage = parseInt(searchParams.get('page') || '1');
-  const searchTerm = searchParams.get('search') || '';
+  // Lấy giá trị từ URL
+  const filterStatus = searchParams.get("status") || "All";
+  const searchTerm = searchParams.get("search") || "";
+  const currentPage = parseInt(searchParams.get("page") || "1");
 
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(false);
-  
-  // Stats State (Thống kê nhanh) - Giữ nguyên
-  const [stats, setStats] = useState({ total: 0, pending: 0, shipping: 0, completed: 0 });
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    shipping: 0,
+    completed: 0,
+    cancelled: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Modal State - Giữ nguyên (Modal không cần lưu URL cũng được, hoặc lưu tùy ý)
   const [showModal, setShowModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  const itemsPerPage = 5; 
+  const itemsPerPage = 10; // tăng lên 10 để grid đẹp hơn
 
-  // --- FETCH DATA ---
+  // Fetch dữ liệu từ API (server-side filter + pagination)
   const fetchOrders = useCallback(async () => {
-      setLoading(true);
-      try {
-          // Logic gọi API giữ nguyên
-          const res = await orderApi.getAllOrders({ status: filterStatus === 'All' ? '' : filterStatus });
-          if (res.success) {
-              setOrders(res.data);
-              
-              // Logic tính stats giữ nguyên
-              const all = res.data;
-              setStats({
-                  total: all.length,
-                  pending: all.filter(o => o.status === 'pending').length,
-                  shipping: all.filter(o => o.status === 'shipping' || o.status === 'confirmed').length,
-                  completed: all.filter(o => o.status === 'delivered' || o.status === 'completed').length,
-                  cancelled: all.filter(o => o.status === 'cancelled').length,
-              });
-          }
-      } catch (error) {
-          console.error("Lỗi tải danh sách đơn hàng:", error);
-          toast.error("Lỗi tải dữ liệu");
-      } finally {
-          setLoading(false);
-      }
-  }, [filterStatus]); // Phụ thuộc vào filterStatus từ URL
+    setLoading(true);
+    setError(null);
+
+    try {
+      const params = {
+        page: currentPage,
+        limit: itemsPerPage,
+        status: filterStatus === "All" ? undefined : filterStatus,
+        search: searchTerm || undefined,
+      };
+
+      const res = await orderApi.getAllOrders(params);
+
+      // Giả sử backend trả về { orders: [...], total: number, page, pages, limit }
+      const fetchedOrders = res.orders || res.data || [];
+      const total = res.total || res.pagination?.total || fetchedOrders.length;
+
+      setOrders(fetchedOrders);
+
+      // Tính stats từ dữ liệu thật (nếu backend chưa gửi stats riêng)
+      setStats({
+        total,
+        pending: fetchedOrders.filter((o) => o.status === "pending").length,
+        shipping: fetchedOrders.filter(
+          (o) => o.status === "shipping" || o.status === "confirmed",
+        ).length,
+        completed: fetchedOrders.filter(
+          (o) => o.status === "delivered" || o.status === "completed",
+        ).length,
+        cancelled: fetchedOrders.filter((o) => o.status === "cancelled").length,
+      });
+    } catch (err) {
+      const errMsg =
+        err.response?.data?.message || err.message || "Lỗi tải đơn hàng";
+      setError(errMsg);
+      toast.error(errMsg);
+      console.error("Lỗi fetch orders:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, filterStatus, searchTerm]);
 
   useEffect(() => {
-      fetchOrders();
+    fetchOrders();
   }, [fetchOrders]);
 
-  // --- ACTIONS (Giữ nguyên logic xử lý) ---
+  // Xem chi tiết đơn
   const handleView = (order) => {
-      setSelectedOrder(order);
-      setShowModal(true);
+    setSelectedOrder(order);
+    setShowModal(true);
   };
 
-  const handleUpdateStatus = async (id, newStatus) => {
-      try {
-          const res = await orderApi.updateOrderStatus(id, newStatus);
-          if (res.success) {
-              toast.success("Cập nhật trạng thái thành công!");
-              setOrders(prevOrders => 
-                  prevOrders.map(o => o._id === id ? { ...o, status: newStatus } : o)
-              );
-              fetchOrders(); 
-          }
-      } catch {
-          toast.error("Cập nhật thất bại");
-      }
+  // Cập nhật trạng thái từ modal
+  const handleUpdateStatus = async (orderId, newStatus) => {
+    try {
+      await orderApi.updateOrderStatus(orderId, newStatus);
+      toast.success("Cập nhật trạng thái thành công!");
+
+      // Cập nhật local state ngay lập tức
+      setOrders((prev) =>
+        prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o)),
+      );
+
+      // Refresh stats & list (tùy chọn)
+      fetchOrders();
+    } catch (err) {
+      toast.error("Cập nhật thất bại: " + (err.message || "Lỗi server"));
+    }
   };
 
   const getStatusBadge = (status) => {
-      switch(status) {
-          case 'delivered': case 'completed': return <Badge bg="success" className="rounded-pill px-3 bg-opacity-75">Hoàn thành</Badge>;
-          case 'shipping': case 'confirmed': return <Badge bg="primary" className="rounded-pill px-3 bg-opacity-75">Vận chuyển</Badge>;
-          case 'pending': return <Badge bg="warning" text="dark" className="rounded-pill px-3 bg-opacity-75">Chờ xử lý</Badge>;
-          case 'cancelled': return <Badge bg="secondary" className="rounded-pill px-3 bg-opacity-75">Đã hủy</Badge>;
-          default: return <Badge bg="light" text="dark">Mới</Badge>;
-      }
+    switch (status) {
+      case "completed":
+      case "delivered":
+        return (
+          <Badge bg="success" className="rounded-pill px-3 py-2">
+            Hoàn thành
+          </Badge>
+        );
+      case "shipping":
+      case "confirmed":
+        return (
+          <Badge bg="primary" className="rounded-pill px-3 py-2">
+            Đang giao
+          </Badge>
+        );
+      case "pending":
+        return (
+          <Badge bg="warning" text="dark" className="rounded-pill px-3 py-2">
+            Chờ xử lý
+          </Badge>
+        );
+      case "cancelled":
+        return (
+          <Badge bg="danger" className="rounded-pill px-3 py-2">
+            Đã hủy
+          </Badge>
+        );
+      default:
+        return (
+          <Badge bg="secondary" className="rounded-pill px-3 py-2">
+            Không xác định
+          </Badge>
+        );
+    }
   };
 
-  // --- CLIENT-SIDE FILTERING (Cho Search) ---
-  // Logic lọc client giữ nguyên
-  const filteredOrders = orders.filter(order => {
-    const s = searchTerm.toLowerCase();    
-    const orderNumber = (order.orderNumber || "").toLowerCase();
-    const customerName = (order.userId?.name || "").toLowerCase();
-    const phoneNumber = (order.phoneNumber || "").toLowerCase();
+  // Pagination handler (đồng bộ URL)
+  const handlePageChange = (page) => {
+    if (page < 1 || page > Math.ceil(stats.total / itemsPerPage)) return;
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set("page", page);
+      return params;
+    });
+  };
 
-    return orderNumber.includes(s) || 
-           customerName.includes(s) ||
-           phoneNumber.includes(s);
-  });
-
-  // --- PAGINATION ---
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
-
-  // --- 4. CẬP NHẬT HÀM CHANGE ĐỂ SET URL ---
-  const handlePageChange = (pageNumber) => {
-      setSearchParams({ status: filterStatus, search: searchTerm, page: pageNumber });
+  // Filter & search handler (reset page về 1)
+  const handleFilterChange = (e) => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set("status", e.target.value);
+      params.set("page", "1");
+      return params;
+    });
   };
 
   const handleSearchChange = (e) => {
-      // Khi search thay đổi, reset về page 1
-      setSearchParams({ status: filterStatus, search: e.target.value, page: 1 });
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set("search", e.target.value);
+      params.set("page", "1");
+      return params;
+    });
   };
 
-  const handleFilterChange = (e) => {
-      // Khi status thay đổi, reset về page 1, giữ nguyên search
-      setSearchParams({ status: e.target.value, search: searchTerm, page: 1 });
-  };
+  const totalPages = Math.ceil(stats.total / itemsPerPage);
 
   return (
     <div className="animate-fade-in">
-      {/* 1. HEADER */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+      {/* HEADER */}
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-5 gap-4">
         <div>
-            <h2 className="fw-bold m-0" style={{color: 'var(--admin-text)'}}>Quản Lý Đơn Hàng</h2>
-            <p className="text-muted small m-0">Theo dõi và xử lý đơn hàng của khách</p>
+          <h2 className="fw-bold mb-1 text-gold">Quản Lý Đơn Hàng</h2>
+          <p className="text-gold-light small mb-0">
+            Theo dõi và xử lý đơn hàng TCG Pokémon
+          </p>
         </div>
-        <Button variant="outline-success" className="rounded-pill px-4 fw-bold d-flex align-items-center gap-2" onClick={fetchOrders}>
-            <FaDownload /> Làm mới
+        <Button
+          variant="gold"
+          className="rounded-pill px-4 fw-bold shadow-gold d-flex align-items-center gap-2"
+          onClick={fetchOrders}
+        >
+          <FaDownload /> Làm mới dữ liệu
         </Button>
       </div>
 
-      {/* 2. MINI STATS BAR */}
-      <Row className="g-3 mb-4 row-cols-2 row-cols-md-5"> 
-        <Col>
-            <div className="stat-card p-3 d-flex align-items-center gap-3 h-100">
-                <div className="rounded-circle bg-light p-3 text-primary"><FaShoppingBag size={20}/></div>
-                <div><h4 className="fw-bold m-0 text-dark">{stats.total}</h4><small className="text-muted">Tổng đơn</small></div>
+      {/* ERROR */}
+      {error && (
+        <Alert variant="danger" className="mb-4">
+          {error}
+        </Alert>
+      )}
+
+      {/* MINI STATS */}
+      <Row className="g-3 mb-5">
+        <Col xs={6} md={3} lg={3}>
+          <div className="stat-card p-4 rounded-4 border border-gold border-opacity-30 bg-dark-light">
+            <div className="d-flex align-items-center gap-3">
+              <div className="rounded-circle bg-gold bg-opacity-25 p-3 text-gold">
+                <FaShoppingBag size={24} />
+              </div>
+              <div>
+                <h4 className="fw-bold mb-0 text-white">{stats.total}</h4>
+                <small className="text-gold-light">Tổng đơn</small>
+              </div>
             </div>
+          </div>
         </Col>
-        <Col>
-            <div className="stat-card p-3 d-flex align-items-center gap-3 h-100">
-                <div className="rounded-circle bg-warning bg-opacity-25 p-3 text-warning"><FaClock size={20}/></div>
-                <div><h4 className="fw-bold m-0 text-dark">{stats.pending}</h4><small className="text-muted">Chờ xử lý</small></div>
+        <Col xs={6} md={3} lg={3}>
+          <div className="stat-card p-4 rounded-4 border border-warning border-opacity-30 bg-dark-light">
+            <div className="d-flex align-items-center gap-3">
+              <div className="rounded-circle bg-warning bg-opacity-25 p-3 text-warning">
+                <FaClock size={24} />
+              </div>
+              <div>
+                <h4 className="fw-bold mb-0 text-white">{stats.pending}</h4>
+                <small className="text-warning">Chờ xử lý</small>
+              </div>
             </div>
+          </div>
         </Col>
-        <Col>
-            <div className="stat-card p-3 d-flex align-items-center gap-3 h-100">
-                <div className="rounded-circle bg-primary bg-opacity-25 p-3 text-primary"><FaTruck size={20}/></div>
-                <div><h4 className="fw-bold m-0 text-dark">{stats.shipping}</h4><small className="text-muted">Đang giao</small></div>
+        <Col xs={6} md={3} lg={3}>
+          <div className="stat-card p-4 rounded-4 border border-primary border-opacity-30 bg-dark-light">
+            <div className="d-flex align-items-center gap-3">
+              <div className="rounded-circle bg-primary bg-opacity-25 p-3 text-primary">
+                <FaTruck size={24} />
+              </div>
+              <div>
+                <h4 className="fw-bold mb-0 text-white">{stats.shipping}</h4>
+                <small className="text-primary">Đang giao</small>
+              </div>
             </div>
+          </div>
         </Col>
-        <Col>
-            <div className="stat-card p-3 d-flex align-items-center gap-3 h-100">
-                <div className="rounded-circle bg-success bg-opacity-25 p-3 text-success"><FaCheckCircle size={20}/></div>
-                <div><h4 className="fw-bold m-0 text-dark">{stats.completed}</h4><small className="text-muted">Hoàn thành</small></div>
+        <Col xs={6} md={3} lg={3}>
+          <div className="stat-card p-4 rounded-4 border border-success border-opacity-30 bg-dark-light">
+            <div className="d-flex align-items-center gap-3">
+              <div className="rounded-circle bg-success bg-opacity-25 p-3 text-success">
+                <FaCheckCircle size={24} />
+              </div>
+              <div>
+                <h4 className="fw-bold mb-0 text-white">{stats.completed}</h4>
+                <small className="text-success">Hoàn thành</small>
+              </div>
             </div>
-        </Col>
-                
-        <Col>
-            <div className="stat-card p-3 d-flex align-items-center gap-3 h-100">
-                <div className="rounded-circle bg-danger bg-opacity-25 p-3 text-danger"><FaTimesCircle size={20}/></div>
-                <div><h4 className="fw-bold m-0 text-dark">{stats.cancelled}</h4><small className="text-muted">Đã hủy</small></div>
-            </div>
+          </div>
         </Col>
       </Row>
 
-      {/* 3. FILTERS */}
-      <div className="table-card p-3 mb-4">
-          <Row className="g-3">
-              <Col md={5}>
-                  <InputGroup>
-                      <InputGroup.Text className="bg-white border-end-0"><FaSearch className="text-muted"/></InputGroup.Text>
-                      <Form.Control 
-                        type="text" 
-                        placeholder="Tìm mã đơn, tên khách, SĐT..." 
-                        className="border-start-0 shadow-none"
-                        value={searchTerm}
-                        onChange={handleSearchChange}
-                      />
-                  </InputGroup>
-              </Col>
-              <Col md={3}>
-                  <Form.Select 
-                    className="shadow-none" 
-                    value={filterStatus}
-                    onChange={handleFilterChange}
-                  >
-                      <option value="All">Tất cả trạng thái</option>
-                      <option value="pending">Chờ xử lý</option>
-                      <option value="shipping">Đang vận chuyển</option>
-                      <option value="delivered">Hoàn thành</option>
-                      <option value="cancelled">Đã hủy</option>
-                  </Form.Select>
-              </Col>
-              <Col md={2}>
-                  <Button variant="outline-secondary" className="w-100 d-flex align-items-center justify-content-center gap-2">
-                      <FaFilter /> Lọc
-                  </Button>
-              </Col>
-          </Row>
+      {/* FILTERS */}
+      <div className="table-card p-4 mb-5 rounded-4 border border-gold border-opacity-30 bg-dark-light">
+        <Row className="g-3 align-items-center">
+          <Col md={5}>
+            <InputGroup className="rounded-pill overflow-hidden border border-gold">
+              <InputGroup.Text className="bg-transparent border-0 text-gold">
+                <FaSearch />
+              </InputGroup.Text>
+              <Form.Control
+                placeholder="Tìm mã đơn, tên khách, SĐT..."
+                className="bg-transparent text-white border-0 shadow-none"
+                value={searchTerm}
+                onChange={handleSearchChange}
+              />
+            </InputGroup>
+          </Col>
+          <Col md={4}>
+            <Form.Select
+              className="rounded-pill bg-transparent text-white border-gold shadow-none"
+              value={filterStatus}
+              onChange={handleFilterChange}
+            >
+              <option value="All">Tất cả trạng thái</option>
+              <option value="pending">Chờ xử lý</option>
+              <option value="shipping">Đang vận chuyển</option>
+              <option value="completed">Hoàn thành</option>
+              <option value="cancelled">Đã hủy</option>
+            </Form.Select>
+          </Col>
+          <Col md={3}>
+            <Button
+              variant="outline-gold"
+              className="w-100 rounded-pill fw-bold d-flex align-items-center justify-content-center gap-2"
+              onClick={fetchOrders}
+            >
+              <FaFilter /> Lọc & Làm mới
+            </Button>
+          </Col>
+        </Row>
       </div>
 
-      {/* 4. ORDERS TABLE */}
-      <div className="table-card overflow-hidden">
-          {loading ? (
-              <div className="text-center py-5"><Spinner animation="border" variant="primary"/></div>
-          ) : (
-              <Table hover responsive className="custom-table align-middle mb-0">
-                  <thead>
-                      <tr>
-                          <th className="ps-4">Mã Đơn</th>
-                          <th>Khách Hàng</th>
-                          <th>Ngày Đặt</th>
-                          <th>Tổng Tiền</th>
-                          <th>Thanh Toán</th>
-                          <th>Trạng Thái</th>
-                          <th className="text-end pe-4">Chi Tiết</th>
-                      </tr>
-                  </thead>
-                  <tbody>
-                      {currentItems.length > 0 ? (
-                          currentItems.map((order) => (
-                            <tr key={order._id}>
-                                <td className="ps-4 fw-bold text-success">{order.orderNumber}</td>
-                                <td>
-                                    <div className="fw-bold" style={{color: 'var(--admin-text)'}}>{order.userId?.name || "Guest"}</div>
-                                    <small className="text-muted">{order.phoneNumber}</small>
-                                </td>
-                                <td>{new Date(order.createdAt).toLocaleDateString('vi-VN')}</td>
-                                <td className="fw-bold">{order.totalAmount_cents?.toLocaleString()} đ</td>
-                                <td><Badge bg="light" text="dark" className="border text-uppercase">{order.paymentMethod}</Badge></td>
-                                <td>{getStatusBadge(order.status)}</td>
-                                <td className="text-end pe-4">
-                                    <Button variant="light" size="sm" className="rounded-pill border shadow-sm text-primary hover-scale px-3" onClick={() => handleView(order)}>
-                                        <FaEye className="me-1"/> Xem
-                                    </Button>
-                                </td>
-                            </tr>
-                          ))
-                      ) : (
-                          <tr>
-                              <td colSpan="7" className="text-center py-5 text-muted">
-                                  Không tìm thấy đơn hàng nào phù hợp.
-                              </td>
-                          </tr>
-                      )}
-                  </tbody>
-              </Table>
-          )}
-          
-          {/* 5. PAGINATION */}
-          {totalPages > 1 && (
-              <div className="p-3 border-top d-flex justify-content-center align-items-center flex-column">
-                  <Pagination className="eco-pagination mb-2">
-                      <Pagination.Prev onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} />
-                      {[...Array(totalPages)].map((_, idx) => (
-                          <Pagination.Item key={idx + 1} active={idx + 1 === currentPage} onClick={() => handlePageChange(idx + 1)}>
-                              {idx + 1}
-                          </Pagination.Item>
-                      ))}
-                      <Pagination.Next onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} />
-                  </Pagination>
-                  <small className="text-muted">
-                      Hiển thị {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, filteredOrders.length)} trên tổng số {filteredOrders.length} đơn hàng
-                  </small>
+      {/* TABLE / GRID ORDERS */}
+      <div className="table-card rounded-4 overflow-hidden shadow-gold-glow border border-gold border-opacity-20 bg-dark">
+        {loading ? (
+          <div className="text-center py-5">
+            <Spinner
+              animation="border"
+              variant="gold"
+              style={{ width: "3rem", height: "3rem" }}
+            />
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="text-center py-5 text-gold-light">
+            <FaShoppingBag size={60} className="mb-4 opacity-50" />
+            <h5>Chưa có đơn hàng nào</h5>
+            <p className="small">Khi có đơn mới, sẽ hiển thị tại đây</p>
+          </div>
+        ) : (
+          <>
+            <Table hover responsive className="mb-0 custom-table text-white">
+              <thead className="bg-gold-opacity">
+                <tr>
+                  <th className="ps-4 py-3">Mã Đơn</th>
+                  <th className="py-3">Khách Hàng</th>
+                  <th className="py-3">Ngày Đặt</th>
+                  <th className="py-3">Tổng Tiền</th>
+                  <th className="py-3">Thanh Toán</th>
+                  <th className="py-3">Trạng Thái</th>
+                  <th className="text-end pe-4 py-3">Chi Tiết</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => (
+                  <tr key={order._id} className="hover-gold-row">
+                    <td className="ps-4 fw-bold text-gold">
+                      {order.orderNumber}
+                    </td>
+                    <td>
+                      <div className="fw-bold">
+                        {order.userId?.name || "Khách vãng lai"}
+                      </div>
+                      <small className="text-gold-light">
+                        {order.phoneNumber}
+                      </small>
+                    </td>
+                    <td>
+                      {new Date(order.createdAt).toLocaleDateString("vi-VN")}
+                    </td>
+                    <td className="fw-bold text-success">
+                      {(order.totalAmount_cents / 1000).toLocaleString()} đ
+                    </td>
+                    <td>
+                      <Badge bg="outline-gold" className="px-3 py-2">
+                        {order.paymentMethod?.toUpperCase() || "N/A"}
+                      </Badge>
+                    </td>
+                    <td>{getStatusBadge(order.status)}</td>
+                    <td className="text-end pe-4">
+                      <Button
+                        variant="outline-gold"
+                        size="sm"
+                        className="rounded-pill px-3"
+                        onClick={() => handleView(order)}
+                      >
+                        <FaEye className="me-1" /> Xem
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="p-4 border-top border-gold border-opacity-20 d-flex justify-content-center">
+                <Pagination className="gold-pagination">
+                  <Pagination.Prev
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  />
+                  {[...Array(totalPages)].map((_, idx) => (
+                    <Pagination.Item
+                      key={idx + 1}
+                      active={idx + 1 === currentPage}
+                      onClick={() => handlePageChange(idx + 1)}
+                    >
+                      {idx + 1}
+                    </Pagination.Item>
+                  ))}
+                  <Pagination.Next
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  />
+                </Pagination>
               </div>
-          )}
+            )}
+          </>
+        )}
       </div>
 
-      {/* MODAL CHI TIẾT */}
-      <OrderDetailModal 
-        key={selectedOrder ? selectedOrder._id : 'closed'}
+      {/* MODAL */}
+      <OrderDetailModal
         show={showModal}
         handleClose={() => setShowModal(false)}
         order={selectedOrder}
