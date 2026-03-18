@@ -134,3 +134,21 @@ export const toggleWishlist = async (req, res, next) => {
         next(err);
     }
 };
+// --- CREATE USER (Thêm mới nhân viên/quản lý) ---
+export const createUser = async (req, res, next) => {
+    try {
+        // Lấy data từ body (khớp với newUserData ở Frontend)
+        const userData = req.body; 
+        
+        const newUser = await userService.createUser(userData);
+
+        res.status(201).json({
+            success: true,
+            message: "Tạo tài khoản thành công!",
+            user: newUser
+        });
+    } catch (err) {
+        // Nếu trùng email hoặc lỗi nghiệp vụ, Service sẽ ném lỗi và rơi vào đây
+        next(err); 
+    }
+};

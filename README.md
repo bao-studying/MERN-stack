@@ -1,10 +1,8 @@
-# EcoStore - Nền Tảng Thương Mại Điện Tử MERN Stack
-
-Dự án E-commerce chuyên kinh doanh các sản phẩm xanh, hữu cơ và thân thiện với môi trường. Hệ thống bao gồm giao diện mua sắm cho khách hàng và trang quản trị (Admin Dashboard) với phân quyền chặt chẽ.
+ 
 
 ## Giới Thiệu
 
-**EcoStore** là một ứng dụng Full-stack được xây dựng trên nền tảng **MERN (MongoDB, Express, React, Node.js)**. Dự án tập trung vào trải nghiệm người dùng mượt mà (Optimistic UI), bảo mật cao (HttpOnly Cookie, RBAC) và kiến trúc mã nguồn sạch sẽ, dễ bảo trì.
+ là một ứng dụng Full-stack được xây dựng trên nền tảng **MERN (MongoDB, Express, React, Node.js)**. Dự án tập trung vào trải nghiệm người dùng mượt mà (Optimistic UI), bảo mật cao (HttpOnly Cookie, RBAC) và kiến trúc mã nguồn sạch sẽ, dễ bảo trì.
 
 ---
 
@@ -115,17 +113,4 @@ CLIENT_URL=[http://localhost:5173]
 
 ---
 
-## Tài Khoản Demo
-
-Admin: [admin@ecostore.com] | pass: 123456 (Full quyền hệ thống)
-Manager: [manager@ecostore.com] | pass: 123456 (Quản lý, không được xóa user/cấu hình)
-Staff: [staff@ecostore.com] | pass: 123456 (Chỉnh được phép cập nhật đơn hàng)
-Customer [customer@ecostore.com] | pass: 123456 (Mua hàng, xem lịch sử)
-
----
-
-## Tác giả
-
-Dự án được phát triển bởi Lê Nguyễn Bảo Long (Brian Lee). Mọi đóng góp hoặc báo lỗi vui lòng tạo Issue hoặc Pull Request.
-
-© 2025 EcoStore. All rights reserved.
+ 

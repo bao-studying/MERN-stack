@@ -180,7 +180,7 @@ const ProductListPage = () => {
     .luxury-page { background: #080808; color: #fff; }
     .hero-banner { 
         height: 400px; 
-        background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1920');
+        background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://lichvietpro.com/images/dc/wallpaper/pokemon/1bPpTfC.jpg');
         background-attachment: fixed;
         display: flex; align-items: center; justify-content: center;
         border-bottom: 1px solid #d4af3733;
@@ -224,7 +224,7 @@ const ProductListPage = () => {
       <div className="hero-banner mb-5">
         <Container className="text-center">
           <Badge
-            bg="none"
+            bg=""
             className="border border-gold text-gold px-3 py-2 rounded-pill mb-3"
           >
             <FaLeaf className="me-2" /> BỘ SƯU TẬP CAO CẤP 2026

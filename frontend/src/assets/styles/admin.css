@@ -12,7 +12,7 @@
   --admin-text-muted: #6c757d;
   --admin-border: rgba(0, 0, 0, 0.08);
   --header-bg: rgba(255, 255, 255, 0.9);
-  --sidebar-bg: linear-gradient(180deg, #1b5e20 0%, #2e7d32 100%);
+  --sidebar-bg: linear-gradient(180deg, #e51b1b 0%, #c4b105 100%);
   --sidebar-text: #ffffff;
   --sidebar-active: rgba(255, 255, 255, 0.2);
   --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.05);

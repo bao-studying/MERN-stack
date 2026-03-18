@@ -43,7 +43,7 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
     },
     {
       path: "/admin/customers",
-      label: "Khách hàng",
+      label: "Tài Khoản",
       icon: <FaUsers />,
       roles: ["admin", "manager"],
     },
@@ -106,7 +106,7 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
 
         {/* Footer nhỏ bên dưới sidebar */}
         <div className="p-3 border-top border-secondary border-opacity-25 text-center text-white-50 small">
-          © 2025 EcoStore System
+          Made By Duong Gia Bao
         </div>
       </div>
     </>

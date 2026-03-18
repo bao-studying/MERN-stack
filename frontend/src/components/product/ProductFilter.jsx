@@ -4,10 +4,10 @@ import { FaFilter, FaRedo, FaChevronDown } from "react-icons/fa";
 import categoryApi from "../../services/category.service";
 
 const PRICE_RANGES = [
-  { label: "Dưới 100k", value: "0-100000" },
-  { label: "100k - 300k", value: "100000-300000" },
-  { label: "300k - 500k", value: "300000-500000" },
-  { label: "Trên 500k", value: "500000-999999999" },
+  { label: "Dưới 2 triệu", value: "0-2000000" },
+  { label: "2 triệu 500k - 5 triệu", value: "2500000-5000000" },
+  { label: "5 triệu 500k - 15 triệu", value: "5500000-15000000" },
+  { label: "Trên 15 triệu 500k", value: "15500000-999999999" },
 ];
 
 const ProductFilter = ({
