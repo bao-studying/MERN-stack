@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 
-import { useSearchParams } from "react-router-dom"; // 1. Import
+import { useSearchParams } from "react-router-dom";
 import CustomerDetailModal from "../../components/admin/CustomerDetailModal";
 import axiosClient from "../../services/axiosClient";
 import "../../assets/styles/admin.css";
@@ -25,12 +25,13 @@ import {
   FaDownload,
   FaUsers,
   FaUserPlus,
+  FaUserTie,
 } from "react-icons/fa";
 
 const CustomerManager = () => {
-  const [searchParams, setSearchParams] = useSearchParams(); // 2. Hook URL
-  // 1. Khai báo các State mới cho yêu cầu thêm User và phân quyền
-  const [currentUser, setCurrentUser] = useState(null); // Lưu data từ getMe
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [currentUser, setCurrentUser] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [newUserData, setNewUserData] = useState({
@@ -38,30 +39,36 @@ const CustomerManager = () => {
     email: "",
     phone: "",
     password: "",
-    role: "staff", // Mặc định là nhân viên
+    role: "staff",
   });
-  // --- 3. LẤY GIÁ TRỊ TỪ URL (Thay vì useState) ---
+
+  // --- LẤY GIÁ TRỊ TỪ URL ---
   const searchTerm = searchParams.get("search") || "";
   const filterStatus = searchParams.get("status") || "All";
   const currentPage = parseInt(searchParams.get("page") || "1");
 
-  // State dữ liệu (chỉ giữ lại những cái cần thiết cho Data)
+  // ── NEW: đọc type từ URL để biết đang xem "customer" hay "staff" ──
+  const accountType = searchParams.get("type") || "customer"; // "customer" | "staff"
+  const isStaffView = accountType === "staff";
+  const pageTitle = isStaffView ? "Quản Lý Đội Ngũ" : "Quản Lý Khách Hàng";
+
+  // Roles tương ứng với từng view
+  const STAFF_ROLES = ["admin", "manager", "staff"];
+  const CUSTOMER_ROLES = ["customer"];
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
 
-  // State Modal (Modal không cần đưa lên URL)
   const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  // --- 2. TẬN DỤNG GETME ĐỂ PHÂN QUYỀN ---
+
   useEffect(() => {
     const fetchMe = async () => {
       try {
-        const res = await axiosClient.get("/auth/me"); // Đường dẫn API getMe của bạn
-        if (res.success) {
-          setCurrentUser(res.data);
-        }
+        const res = await axiosClient.get("/auth/me");
+        if (res.success) setCurrentUser(res.data);
       } catch (error) {
         console.error("Lỗi lấy thông tin cá nhân:", error);
       }
@@ -69,7 +76,6 @@ const CustomerManager = () => {
     fetchMe();
   }, []);
 
-  // --- 3. LOGIC XỬ LÝ FORM THÊM MỚI ---
   const handleAddUserChange = (e) => {
     setNewUserData({ ...newUserData, [e.target.name]: e.target.value });
   };
@@ -78,7 +84,6 @@ const CustomerManager = () => {
     e.preventDefault();
     setAddLoading(true);
     try {
-      // Gửi data lên backend (Bảo cần đảm bảo route này đã được viết)
       const res = await axiosClient.post("/users", newUserData);
       if (res.success) {
         alert("Thêm người dùng mới thành công!");
@@ -90,7 +95,7 @@ const CustomerManager = () => {
           password: "",
           role: "staff",
         });
-        fetchUsers(); // Refresh danh sách sau khi thêm
+        fetchUsers();
       }
     } catch (error) {
       alert(error.response?.data?.message || "Có lỗi xảy ra khi thêm user");
@@ -98,7 +103,8 @@ const CustomerManager = () => {
       setAddLoading(false);
     }
   };
-  // --- 4. FETCH DATA ---
+
+  // --- FETCH DATA — truyền roles tương ứng với từng view lên API ---
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
@@ -108,6 +114,10 @@ const CustomerManager = () => {
           limit: 5,
           search: searchTerm,
           status: filterStatus,
+          // Gửi roles phù hợp để backend lọc đúng nhóm
+          roles: isStaffView
+            ? STAFF_ROLES.join(",") // "admin,manager,staff"
+            : CUSTOMER_ROLES.join(","), // "customer"
         },
       });
 
@@ -119,9 +129,8 @@ const CustomerManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchTerm, filterStatus]); // Dependency chuẩn: Khi URL đổi -> Gọi lại API
+  }, [currentPage, searchTerm, filterStatus, accountType]);
 
-  // Debounce effect để tránh gọi API liên tục khi gõ tìm kiếm
   useEffect(() => {
     const timeout = setTimeout(() => {
       fetchUsers();
@@ -129,7 +138,7 @@ const CustomerManager = () => {
     return () => clearTimeout(timeout);
   }, [fetchUsers]);
 
-  // --- 5. CÁC HÀM UPDATE URL (Thay thế setState cũ) ---
+  // --- CÁC HÀM UPDATE URL ---
   const handlePageChange = (page) => {
     const newParams = new URLSearchParams(searchParams);
     newParams.set("page", page);
@@ -139,18 +148,18 @@ const CustomerManager = () => {
   const handleSearchChange = (e) => {
     const newParams = new URLSearchParams(searchParams);
     newParams.set("search", e.target.value);
-    newParams.set("page", 1); // Reset về trang 1 khi tìm kiếm
+    newParams.set("page", 1);
     setSearchParams(newParams);
   };
 
   const handleFilterChange = (e) => {
     const newParams = new URLSearchParams(searchParams);
     newParams.set("status", e.target.value);
-    newParams.set("page", 1); // Reset về trang 1 khi lọc
+    newParams.set("page", 1);
     setSearchParams(newParams);
   };
 
-  // --- 6. ACTIONS (LOGIC MODAL & KHÓA TK GIỮ NGUYÊN) ---
+  // --- ACTIONS ---
   const handleViewUser = (user) => {
     setSelectedUser(user);
     setShowModal(true);
@@ -163,14 +172,12 @@ const CustomerManager = () => {
     if (window.confirm(`Xác nhận ${action} tài khoản này?`)) {
       try {
         const res = await axiosClient.put(`/users/${id}/status`);
-
         if (res.success) {
           setUsers((prevUsers) =>
             prevUsers.map((u) =>
               u._id === id ? { ...u, status: nextStatus } : u,
             ),
           );
-          // Cập nhật luôn cho Modal nếu đang mở user đó
           if (selectedUser && selectedUser._id === id) {
             setSelectedUser((prev) => ({ ...prev, status: nextStatus }));
           }
@@ -186,36 +193,42 @@ const CustomerManager = () => {
       }
     }
   };
+
   const canAddUser =
     currentUser?.role?.name === "admin" ||
     currentUser?.role?.name === "manager";
+
   return (
     <div className="animate-fade-in">
       {/* HEADER */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
         <div>
+          {/* ── Title thay đổi theo type ── */}
           <h2 className="fw-bold m-0" style={{ color: "var(--admin-text)" }}>
-            Quản Lý Người Dùng
+            {isStaffView ? (
+              <FaUserTie className="me-2" />
+            ) : (
+              <FaUsers className="me-2" />
+            )}
+            {pageTitle}
           </h2>
           <p className="text-muted small m-0">
-            <FaUsers className="me-1" />
             Tổng số: {totalUsers} tài khoản
           </p>
         </div>
         <div className="d-flex gap-2"></div>
-        {/* NÚT THÊM USER - CHỈ HIỆN KHI LÀ ADMIN/MANAGER */}
         {canAddUser && (
           <Button
             variant="success"
             className="rounded-pill px-4 fw-bold d-flex align-items-center gap-2 shadow-sm"
             onClick={() => setShowAddModal(true)}
           >
-            <FaUserPlus /> Thêm User
+            <FaUserPlus /> Thêm {isStaffView ? "Nhân viên" : "Khách hàng"}
           </Button>
         )}
       </div>
 
-      {/* FILTER BAR (Đã gắn hàm handle mới) */}
+      {/* FILTER BAR */}
       <div className="table-card p-3 mb-4">
         <Row className="g-3">
           <Col md={5}>
@@ -227,16 +240,16 @@ const CustomerManager = () => {
                 type="text"
                 placeholder="Tìm kiếm theo tên, email, sđt..."
                 className="border-start-0 shadow-none"
-                value={searchTerm} // Value từ URL
-                onChange={handleSearchChange} // Gọi hàm update URL
+                value={searchTerm}
+                onChange={handleSearchChange}
               />
             </InputGroup>
           </Col>
           <Col md={3}>
             <Form.Select
               className="shadow-none"
-              value={filterStatus} // Value từ URL
-              onChange={handleFilterChange} // Gọi hàm update URL
+              value={filterStatus}
+              onChange={handleFilterChange}
             >
               <option value="All">Tất cả trạng thái</option>
               <option value="Active">Đang hoạt động</option>
@@ -378,7 +391,7 @@ const CustomerManager = () => {
             ) : (
               <tr>
                 <td colSpan="6" className="text-center py-5 text-muted">
-                  Không tìm thấy người dùng nào.
+                  Không tìm thấy {isStaffView ? "nhân viên" : "khách hàng"} nào.
                 </td>
               </tr>
             )}
@@ -415,7 +428,7 @@ const CustomerManager = () => {
       </div>
 
       <div>
-        {/* POPUP THÊM USER MỚI (Tích hợp trực tiếp) */}
+        {/* MODAL THÊM USER */}
         <Modal
           show={showAddModal}
           onHide={() => setShowAddModal(false)}
@@ -424,7 +437,7 @@ const CustomerManager = () => {
         >
           <Modal.Header closeButton className="border-0">
             <Modal.Title className="fw-bold text-success">
-              Thêm Thành Viên Mới
+              {isStaffView ? "Thêm Nhân Viên Mới" : "Thêm Thành Viên Mới"}
             </Modal.Title>
           </Modal.Header>
           <Modal.Body>

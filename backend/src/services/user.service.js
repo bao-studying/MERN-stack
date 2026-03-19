@@ -1,45 +1,19 @@
 import User from "../models/user.js";
 import Role from "../models/role.js";
 import bcrypt from "bcrypt";
-export const createUser = async (userData) => {
-  const { name, email, phone, password, role } = userData;
 
-  // 1. Kiểm tra email đã tồn tại chưa
-  const existingUser = await User.findOne({ email });
-  if (existingUser) {
-    const error = new Error("Email này đã được sử dụng!");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  // 2. Tìm Role ID từ tên role (manager/employee)
-  const roleDoc = await Role.findOne({ name: role.toLowerCase() });
-  if (!roleDoc) {
-    const error = new Error("Vai trò không hợp lệ!");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  // 3. Hash mật khẩu
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
-  // 4. Tạo User mới
-  const newUser = new User({
-    name,
-    email,
-    phone,
-    password_hash: hashedPassword, // Khớp với trường trong DB của bạn
-    role: roleDoc._id,
-    status: 1, // Mặc định là Active
-  });
-
-  return await newUser.save();
-};
 // ===== USER =====
-export const findUsers = async ({ page, limit, search, status }) => {
+
+export const findUsers = async ({
+  page,
+  limit,
+  search,
+  status,
+  roles = "",
+}) => {
   const query = {};
 
+  // 1. Tìm kiếm theo tên / email / phone
   if (search) {
     query.$or = [
       { name: { $regex: search, $options: "i" } },
@@ -48,8 +22,26 @@ export const findUsers = async ({ page, limit, search, status }) => {
     ];
   }
 
+  // 2. Lọc theo trạng thái
   if (status !== "All") {
     query.status = status === "Active" ? 1 : 0;
+  }
+
+  // 3. ← NEW: Lọc theo danh sách role names
+  //    Frontend gửi: roles="customer" hoặc roles="admin,manager,staff"
+  if (roles) {
+    const roleNames = roles
+      .split(",")
+      .map((r) => r.trim())
+      .filter(Boolean);
+    if (roleNames.length > 0) {
+      // Tìm các Role document có name nằm trong danh sách
+      const roleDocs = await Role.find({ name: { $in: roleNames } }).select(
+        "_id",
+      );
+      const roleIds = roleDocs.map((r) => r._id);
+      query.role = { $in: roleIds };
+    }
   }
 
   const users = await User.find(query)
@@ -70,10 +62,8 @@ export const findUserById = async (id) => {
 export const toggleUserStatusById = async (id) => {
   const user = await User.findById(id);
   if (!user) throw new Error("User not found");
-
   user.status = user.status === 1 ? 0 : 1;
   await user.save();
-
   return user;
 };
 
@@ -81,7 +71,40 @@ export const deleteUserById = async (id) => {
   return await User.findByIdAndDelete(id);
 };
 
+export const createUser = async (userData) => {
+  const { name, email, phone, password, role } = userData;
+
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    const error = new Error("Email này đã được sử dụng!");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const roleDoc = await Role.findOne({ name: role.toLowerCase() });
+  if (!roleDoc) {
+    const error = new Error("Vai trò không hợp lệ!");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  const newUser = new User({
+    name,
+    email,
+    phone,
+    password_hash: hashedPassword,
+    role: roleDoc._id,
+    status: 1,
+  });
+
+  return await newUser.save();
+};
+
 // ===== ADDRESS =====
+
 export const addUserAddress = async (userId, addressData) => {
   const user = await User.findById(userId);
   if (!user) throw new Error("User not found");
@@ -113,7 +136,6 @@ export const updateUserAddress = async (userId, addressId, data) => {
 
   Object.assign(address, data);
   await user.save();
-
   return user.addresses;
 };
 
@@ -150,6 +172,7 @@ export const setDefaultUserAddress = async (userId, addressId) => {
 };
 
 // ===== WISHLIST =====
+
 export const getUserWishlist = async (userId) => {
   const user = await User.findById(userId).populate("wishlist");
   if (!user) throw new Error("User not found");
@@ -161,8 +184,8 @@ export const toggleUserWishlist = async (userId, productId) => {
   if (!user) throw new Error("User not found");
 
   const index = user.wishlist.findIndex((id) => id.toString() === productId);
-
   let type = "";
+
   if (index === -1) {
     user.wishlist.push(productId);
     type = "added";

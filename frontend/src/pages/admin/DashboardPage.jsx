@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Row, Col, Table, Badge, Spinner, Alert } from "react-bootstrap";
+import { Badge, Spinner, Alert } from "react-bootstrap";
 import {
   FaShoppingBag,
   FaUsers,
@@ -26,10 +26,486 @@ import { useAdminTheme } from "../../context/useAdminTheme";
 import orderApi from "../../services/order.service";
 import "../../assets/styles/admin.css";
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   STYLES — scoped to .db-root
+───────────────────────────────────────────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap');
+
+  .db-root {
+    --bg:      #f5f3ef;
+    --surf:    #ffffff;
+    --border:  #e2ded6;
+    --text:    #1c1917;
+    --muted:   #78716c;
+    --subtle:  #a8a29e;
+    --accent:  #c8490c;
+    --gold:    #b45309;
+    --green:   #15803d;
+    --blue:    #1d4ed8;
+    --font:    'DM Sans', sans-serif;
+    --mono:    'DM Mono', monospace;
+    --r:       12px;
+    font-family: var(--font);
+    color: var(--text);
+  }
+
+  /* ── PAGE HEADER ── */
+  .db-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    gap: 16px;
+  }
+  .db-header-left { display: flex; align-items: center; gap: 10px; }
+  .db-crown-wrap {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: #fef3c7;
+    border: 0.5px solid #fde68a;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: var(--gold);
+    flex-shrink: 0;
+  }
+  .db-title {
+    font-size: 19px; font-weight: 600;
+    letter-spacing: -.4px; margin: 0 0 1px;
+    color: var(--text);
+  }
+  .db-subtitle { font-size: 12px; color: var(--muted); margin: 0; }
+  .db-date {
+    font-size: 12px; font-family: var(--mono);
+    color: var(--subtle); white-space: nowrap;
+  }
+
+  /* ── ERROR ── */
+  .db-error {
+    background: #fef2f2; border: 0.5px solid #fecaca;
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 13px; color: #dc2626; margin-bottom: 16px;
+  }
+
+  /* ── LOADING ── */
+  .db-loading {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 300px; gap: 12px;
+  }
+  .db-spinner {
+    width: 32px; height: 32px;
+    border: 2.5px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: db-spin .8s linear infinite;
+  }
+  @keyframes db-spin { to { transform: rotate(360deg); } }
+  .db-loading-txt { font-size: 13px; color: var(--muted); }
+
+  /* ══════════════════════════════════════════════════
+     BENTO GRID
+  ══════════════════════════════════════════════════ */
+  .db-bento {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  /* ── BASE CELL ── */
+  .db-cell {
+    background: var(--surf);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+    animation: db-fadein .3s ease both;
+  }
+  @keyframes db-fadein {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .db-cell:nth-child(1) { animation-delay: .00s; }
+  .db-cell:nth-child(2) { animation-delay: .04s; }
+  .db-cell:nth-child(3) { animation-delay: .08s; }
+  .db-cell:nth-child(4) { animation-delay: .12s; }
+  .db-cell:nth-child(5) { animation-delay: .16s; }
+  .db-cell:nth-child(6) { animation-delay: .20s; }
+  .db-cell:nth-child(7) { animation-delay: .24s; }
+
+  /* ── GRID PLACEMENT ── */
+
+  /* Row 1: Area chart (col 1-3, row 1-2) + 2 KPI cards stacked (col 4, row 1-2) */
+  .db-cell-area {
+    grid-column: 1 / 4;
+    grid-row: 1 / 3;
+    display: flex; flex-direction: column;
+  }
+
+  /* KPI tall (right column, row 1) */
+  .db-cell-kpi-r1 {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  /* KPI tall (right column, row 2) */
+  .db-cell-kpi-r2 {
+    grid-column: 4;
+    grid-row: 2;
+  }
+
+  /* Row 3: 2 KPI side-by-side (col 1-2) + Pie chart (col 3-4) */
+  .db-cell-kpi-b1 {
+    grid-column: 1 / 2;
+    grid-row: 3;
+  }
+  .db-cell-kpi-b2 {
+    grid-column: 2 / 3;
+    grid-row: 3;
+  }
+  .db-cell-pie {
+    grid-column: 3 / 5;
+    grid-row: 3;
+    display: flex; flex-direction: column;
+    min-height: 220px;
+  }
+
+  /* ── CELL HEADER ── */
+  .db-cell-hd {
+    padding: 14px 16px 10px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .db-cell-hd-title {
+    font-size: 13px; font-weight: 600;
+    color: var(--text); margin: 0;
+    letter-spacing: -.2px;
+  }
+  .db-cell-hd-sub {
+    font-size: 11px; color: var(--subtle);
+  }
+
+  /* ── AREA CHART ── */
+  .db-chart-body {
+    flex: 1;
+    padding: 12px 8px 8px;
+    min-height: 0;
+  }
+
+  /* ── KPI CARD (tall — right column) ── */
+  .db-kpi-tall {
+    padding: 18px 16px;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+  }
+  .db-kpi-tall-top {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; gap: 8px;
+  }
+  .db-kpi-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+  }
+  .db-kpi-icon-gold   { background: #fef3c7; color: var(--gold); }
+  .db-kpi-icon-green  { background: #dcfce7; color: var(--green); }
+  .db-kpi-icon-blue   { background: #dbeafe; color: var(--blue); }
+  .db-kpi-icon-red    { background: #fce7f3; color: #be185d; }
+
+  .db-kpi-label {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: .5px; text-transform: uppercase;
+    color: var(--subtle); margin: 0 0 4px;
+  }
+  .db-kpi-value {
+    font-size: 22px; font-weight: 600;
+    font-family: var(--mono);
+    color: var(--text); line-height: 1.1;
+    letter-spacing: -.5px;
+  }
+  .db-kpi-trend {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 500;
+    padding: 3px 8px; border-radius: 20px;
+    margin-top: 10px;
+  }
+  .db-kpi-trend-up   { background: #dcfce7; color: #15803d; }
+  .db-kpi-trend-down { background: #fee2e2; color: #dc2626; }
+  .db-kpi-vs {
+    font-size: 10px; color: var(--subtle); margin-top: 4px;
+  }
+
+  /* ── KPI CARD (small — bottom row) ── */
+  .db-kpi-small {
+    padding: 16px;
+    display: flex; flex-direction: column;
+    gap: 10px;
+  }
+  .db-kpi-small-top {
+    display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .db-kpi-small-val {
+    font-size: 24px; font-weight: 600;
+    font-family: var(--mono);
+    color: var(--text); letter-spacing: -.5px;
+  }
+  .db-kpi-small-lbl {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: .4px; text-transform: uppercase;
+    color: var(--subtle);
+  }
+  .db-kpi-small-bar {
+    height: 3px; border-radius: 2px;
+    background: var(--border); overflow: hidden;
+  }
+  .db-kpi-small-fill {
+    height: 100%; border-radius: 2px;
+    transition: width .6s ease;
+  }
+
+  /* ── PIE SECTION ── */
+  .db-pie-body {
+    flex: 1; padding: 10px 16px;
+    display: flex; align-items: center;
+    gap: 12px; min-height: 180px;
+  }
+  .db-pie-chart-wrap { flex-shrink: 0; width: 160px; height: 160px; }
+  .db-pie-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .db-pie-legend-item { display: flex; align-items: center; gap: 8px; }
+  .db-pie-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .db-pie-legend-name {
+    font-size: 11px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
+  }
+  .db-pie-legend-val {
+    font-size: 11px; font-family: var(--mono);
+    font-weight: 500; color: var(--text); flex-shrink: 0;
+  }
+
+  /* ══════════════════════════════════════════════════
+     RECENT ORDERS TABLE
+  ══════════════════════════════════════════════════ */
+  .db-orders-card {
+    background: var(--surf);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+    animation: db-fadein .3s ease .28s both;
+  }
+  .db-orders-hd {
+    padding: 13px 18px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .db-orders-title {
+    font-size: 13px; font-weight: 600;
+    color: var(--text); margin: 0;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .db-orders-title svg { font-size: 12px; color: var(--muted); }
+  .db-view-all {
+    font-size: 11px; font-weight: 500;
+    padding: 3px 10px; border-radius: 6px;
+    border: 0.5px solid var(--border);
+    background: var(--bg); color: var(--muted);
+    cursor: pointer; transition: background .12s;
+  }
+  .db-view-all:hover { background: var(--border); color: var(--text); }
+
+  .db-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .db-table thead th {
+    padding: 9px 14px;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: .5px; text-transform: uppercase;
+    color: var(--subtle);
+    border-bottom: 0.5px solid var(--border);
+    background: var(--bg);
+    white-space: nowrap;
+  }
+  .db-table tbody tr {
+    border-bottom: 0.5px solid var(--border);
+    transition: background .1s;
+  }
+  .db-table tbody tr:last-child { border-bottom: none; }
+  .db-table tbody tr:hover { background: #faf9f7; }
+  .db-table td {
+    padding: 11px 14px;
+    color: var(--text);
+    vertical-align: middle;
+  }
+  .db-order-id {
+    font-family: var(--mono); font-size: 12px;
+    font-weight: 500; color: var(--accent);
+  }
+  .db-order-amount {
+    font-family: var(--mono); font-size: 13px;
+    font-weight: 500; color: var(--green);
+  }
+  .db-order-product {
+    white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; max-width: 160px;
+    display: block; color: var(--muted); font-size: 12px;
+  }
+  .db-badge {
+    display: inline-block;
+    padding: 2px 9px; border-radius: 20px;
+    font-size: 11px; font-weight: 500;
+  }
+  .db-badge-done     { background: #dcfce7; color: #15803d; }
+  .db-badge-ship     { background: #dbeafe; color: #1d4ed8; }
+  .db-badge-pending  { background: #fef9c3; color: #a16207; }
+  .db-badge-cancel   { background: #f4f2ee; color: var(--muted); }
+
+  .db-empty {
+    padding: 48px 20px; text-align: center;
+    color: var(--subtle); font-size: 13px;
+  }
+  .db-empty-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: var(--border); margin: 0 auto 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; opacity: .5;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 860px) {
+    .db-bento { grid-template-columns: 1fr 1fr; }
+    .db-cell-area  { grid-column: 1 / 3; grid-row: 1 / 2; }
+    .db-cell-kpi-r1{ grid-column: 1;     grid-row: 2; }
+    .db-cell-kpi-r2{ grid-column: 2;     grid-row: 2; }
+    .db-cell-kpi-b1{ grid-column: 1;     grid-row: 3; }
+    .db-cell-kpi-b2{ grid-column: 2;     grid-row: 3; }
+    .db-cell-pie   { grid-column: 1 / 3; grid-row: 4; }
+  }
+  @media (max-width: 540px) {
+    .db-bento { grid-template-columns: 1fr; }
+    .db-cell-area,
+    .db-cell-kpi-r1,.db-cell-kpi-r2,
+    .db-cell-kpi-b1,.db-cell-kpi-b2,
+    .db-cell-pie { grid-column: 1; grid-row: auto; }
+  }
+`;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   STATUS BADGE (pure UI helper — no logic)
+───────────────────────────────────────────────────────────────────────────── */
+const StatusBadge = ({ status }) => {
+  switch (status) {
+    case "completed":
+      return <span className="db-badge db-badge-done">Hoàn thành</span>;
+    case "shipping":
+      return <span className="db-badge db-badge-ship">Đang giao</span>;
+    case "pending":
+      return <span className="db-badge db-badge-pending">Chờ xác nhận</span>;
+    default:
+      return <span className="db-badge db-badge-cancel">Đã hủy</span>;
+  }
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   KPI TALL CARD
+───────────────────────────────────────────────────────────────────────────── */
+const KpiTall = ({ item }) => {
+  const iconCls =
+    {
+      gold: "db-kpi-icon-gold",
+      success: "db-kpi-icon-green",
+      primary: "db-kpi-icon-blue",
+      danger: "db-kpi-icon-red",
+    }[item.color] || "db-kpi-icon-gold";
+
+  return (
+    <div className="db-kpi-tall">
+      <div className="db-kpi-tall-top">
+        <div>
+          <p className="db-kpi-label">{item.title}</p>
+          <div className="db-kpi-value">{item.value}</div>
+        </div>
+        <div className={`db-kpi-icon ${iconCls}`}>{item.icon}</div>
+      </div>
+      <div>
+        <div
+          className={`db-kpi-trend ${item.isUp ? "db-kpi-trend-up" : "db-kpi-trend-down"}`}
+        >
+          {item.isUp ? (
+            <FaArrowUp style={{ fontSize: 9 }} />
+          ) : (
+            <FaArrowDown style={{ fontSize: 9 }} />
+          )}
+          {item.trend}
+        </div>
+        <div className="db-kpi-vs">so với tuần trước</div>
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   KPI SMALL CARD (bottom row)
+───────────────────────────────────────────────────────────────────────────── */
+const KpiSmall = ({ item, fillColor, fillPct }) => {
+  const iconCls =
+    {
+      gold: "db-kpi-icon-gold",
+      success: "db-kpi-icon-green",
+      primary: "db-kpi-icon-blue",
+      danger: "db-kpi-icon-red",
+    }[item.color] || "db-kpi-icon-gold";
+
+  return (
+    <div className="db-kpi-small">
+      <div className="db-kpi-small-top">
+        <div>
+          <div className="db-kpi-small-lbl">{item.title}</div>
+          <div className="db-kpi-small-val">{item.value}</div>
+        </div>
+        <div className={`db-kpi-icon ${iconCls}`}>{item.icon}</div>
+      </div>
+      <div>
+        <div className="db-kpi-small-bar">
+          <div
+            className="db-kpi-small-fill"
+            style={{ width: `${fillPct}%`, background: fillColor }}
+          />
+        </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: 5,
+          }}
+        >
+          <span
+            className={`db-kpi-trend ${item.isUp ? "db-kpi-trend-up" : "db-kpi-trend-down"}`}
+            style={{ fontSize: 10, padding: "2px 7px" }}
+          >
+            {item.isUp ? (
+              <FaArrowUp style={{ fontSize: 8 }} />
+            ) : (
+              <FaArrowDown style={{ fontSize: 8 }} />
+            )}
+            {item.trend}
+          </span>
+          <span style={{ fontSize: 10, color: "var(--subtle)" }}>
+            vs tuần trước
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MAIN COMPONENT — 100% logic identical to original
+───────────────────────────────────────────────────────────────────────────── */
 const DashboardPage = () => {
   const { theme } = useAdminTheme();
 
-  const [orders, setOrders] = useState([]); // Luôn là mảng rỗng ban đầu
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -44,7 +520,6 @@ const DashboardPage = () => {
           sort: "-createdAt",
         });
 
-        // Chuẩn hóa response: luôn lấy mảng orders
         let fetchedOrders = [];
         if (Array.isArray(result)) {
           fetchedOrders = result;
@@ -52,7 +527,6 @@ const DashboardPage = () => {
           fetchedOrders = result.orders || result.data || [];
         }
 
-        // Bảo vệ: nếu không phải array, ép thành []
         setOrders(Array.isArray(fetchedOrders) ? fetchedOrders : []);
       } catch (err) {
         setError("Không tải được đơn hàng: " + (err.message || "Lỗi server"));
@@ -66,7 +540,6 @@ const DashboardPage = () => {
   }, []);
 
   // ================== TÍNH TOÁN AN TOÀN ==================
-  // Hàm reduce an toàn: nếu không phải array hoặc rỗng → trả default
   const safeReduce = (arr, callback, initialValue) => {
     if (!Array.isArray(arr) || arr.length === 0) return initialValue;
     return arr.reduce(callback, initialValue);
@@ -122,7 +595,7 @@ const DashboardPage = () => {
     },
   ];
 
-  // Doanh thu theo ngày - an toàn
+  // Doanh thu theo ngày
   const revenueByDay = safeReduce(
     orders,
     (acc, order) => {
@@ -141,7 +614,7 @@ const DashboardPage = () => {
     doanhthu,
   }));
 
-  // Top set bán chạy - an toàn
+  // Top set bán chạy
   const setSales = safeReduce(
     orders,
     (acc, order) => {
@@ -162,7 +635,7 @@ const DashboardPage = () => {
 
   const COLORS = ["#d4af37", "#ff6b6b", "#4ecdc4", "#45b7d1"];
 
-  // Recent Orders - an toàn
+  // Recent Orders
   const recentOrders = Array.isArray(orders)
     ? orders.slice(0, 5).map((o) => ({
         id: o.orderNumber || "N/A",
@@ -171,8 +644,11 @@ const DashboardPage = () => {
           ? new Date(o.createdAt).toLocaleDateString("vi-VN")
           : "N/A",
         total: o.totalAmount_cents
-          ? `${(o.totalAmount_cents / 1000).toLocaleString()}đ`
-          : "0đ",
+          ? new Intl.NumberFormat("vi-VN", {
+              style: "currency",
+              currency: "VND",
+            }).format(o.totalAmount_cents)
+          : "N/A",
         status: o.status || "unknown",
         product: o.items?.[0]?.name || "Nhiều sản phẩm",
       }))
@@ -207,19 +683,25 @@ const DashboardPage = () => {
     }
   };
 
+  /* ── RENDER ── */
   return (
-    <div className="animate-fade-in">
-      {/* HEADER */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-5 gap-4">
-        <div>
-          <h1 className="gradient-title mb-1">
-            <FaCrown className="me-3 text-gold" /> BAO Po_Box Dashboard
-          </h1>
-          <p className="text-gold-light small">
-            Kho báu Pokémon TCG – Dữ liệu realtime
-          </p>
+    <div className="db-root animate-fade-in">
+      <style dangerouslySetInnerHTML={{ __html: STYLES }} />
+
+      {/* PAGE HEADER */}
+      <div className="db-header">
+        <div className="db-header-left">
+          <div className="db-crown-wrap">
+            <FaCrown />
+          </div>
+          <div>
+            <h1 className="db-title">BAO Po_Box Dashboard</h1>
+            <p className="db-subtitle">
+              Kho báu Pokémon TCG – Dữ liệu realtime
+            </p>
+          </div>
         </div>
-        <div className="text-gold small fw-bold">
+        <div className="db-date">
           {new Date().toLocaleDateString("vi-VN", {
             weekday: "long",
             year: "numeric",
@@ -230,211 +712,254 @@ const DashboardPage = () => {
       </div>
 
       {/* ERROR */}
-      {error && (
-        <Alert variant="danger" className="mb-4">
-          {error}
-        </Alert>
-      )}
+      {error && <div className="db-error">{error}</div>}
 
       {/* LOADING */}
       {loading && (
-        <div className="text-center py-5">
-          <Spinner
-            animation="border"
-            variant="gold"
-            style={{ width: "4rem", height: "4rem" }}
-          />
-          <p className="mt-3 text-gold">Đang tải dữ liệu...</p>
+        <div className="db-loading">
+          <div className="db-spinner" />
+          <span className="db-loading-txt">Đang tải dữ liệu...</span>
         </div>
       )}
 
-      {/* KPI - Chỉ render khi không loading */}
+      {/* BENTO GRID */}
       {!loading && (
-        <Row className="g-4 mb-5">
-          {kpiData.map((item, idx) => (
-            <Col md={6} xl={3} key={idx}>
-              <div className={`kpi-card kpi-${item.color} shadow-gold-glow`}>
-                <div className="d-flex justify-content-between align-items-start">
-                  <div>
-                    <p className="kpi-label mb-1 text-uppercase">
-                      {item.title}
-                    </p>
-                    <h3 className="kpi-value mb-0">{item.value}</h3>
-                  </div>
-                  <div className={`kpi-icon bg-${item.color}-opacity`}>
-                    {item.icon}
-                  </div>
-                </div>
-                <div className="mt-3 d-flex align-items-center small trend-badge">
-                  <span className={`trend ${item.isUp ? "up" : "down"}`}>
-                    {item.isUp ? <FaArrowUp /> : <FaArrowDown />} {item.trend}
-                  </span>
-                  <span className="text-gold-light ms-2">
-                    so với tuần trước
-                  </span>
-                </div>
-              </div>
-            </Col>
-          ))}
-        </Row>
-      )}
-
-      {/* CHARTS - Chỉ render khi có dữ liệu */}
-      {!loading && orders.length > 0 && (
-        <Row className="g-4 mb-5">
-          <Col lg={8}>
-            <div
-              className="chart-card shadow-gold-glow"
-              style={{ minHeight: "420px" }}
-            >
-              <div className="chart-header">
-                <h5 className="fw-bold mb-0 text-gold">Doanh Thu Tuần Này</h5>
-                <small className="text-gold-light">
+        <>
+          <div className="db-bento">
+            {/* ── CELL 1: Area chart (large, col 1-3, row 1-2) ── */}
+            <div className="db-cell db-cell-area">
+              <div className="db-cell-hd">
+                <p className="db-cell-hd-title">Doanh Thu Tuần Này</p>
+                <span className="db-cell-hd-sub">
                   Tổng booster & sealed product
-                </small>
+                </span>
               </div>
-              <div
-                style={{ width: "100%", height: "380px", minHeight: "380px" }}
-              >
+              <div className="db-chart-body" style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={revenueData}>
+                  <AreaChart
+                    data={revenueData}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+                  >
                     <defs>
-                      <linearGradient id="goldArea" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient
+                        id="dbGoldArea"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
                         <stop
                           offset="5%"
-                          stopColor="#d4af37"
-                          stopOpacity={0.7}
+                          stopColor="#b45309"
+                          stopOpacity={0.18}
                         />
                         <stop
                           offset="95%"
-                          stopColor="#d4af37"
+                          stopColor="#b45309"
                           stopOpacity={0}
                         />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                    <XAxis dataKey="name" stroke="#888" />
-                    <YAxis stroke="#888" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2ded6" />
+                    <XAxis
+                      dataKey="name"
+                      stroke="#a8a29e"
+                      tick={{ fontSize: 11 }}
+                    />
+                    <YAxis
+                      stroke="#a8a29e"
+                      tick={{ fontSize: 11 }}
+                      width={40}
+                    />
                     <Tooltip
                       contentStyle={{
-                        background: "#1a1a1a",
-                        border: "1px solid #d4af37",
-                        borderRadius: "12px",
-                        color: "#fff",
+                        background: "#fff",
+                        border: "0.5px solid #e2ded6",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        color: "#1c1917",
                       }}
                     />
                     <Area
                       type="monotone"
                       dataKey="doanhthu"
-                      stroke="#d4af37"
-                      fill="url(#goldArea)"
+                      stroke="#b45309"
+                      strokeWidth={2}
+                      fill="url(#dbGoldArea)"
+                      dot={{ fill: "#b45309", r: 3, strokeWidth: 0 }}
+                      activeDot={{ r: 5 }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
-          </Col>
 
-          <Col lg={4}>
-            <div
-              className="chart-card shadow-gold-glow"
-              style={{ minHeight: "420px" }}
-            >
-              <div className="chart-header">
-                <h5 className="fw-bold mb-0 text-gold">Top Set Bán Chạy</h5>
+            {/* ── CELL 2: KPI tall — Doanh thu (col 4, row 1) ── */}
+            <div className="db-cell db-cell-kpi-r1">
+              <KpiTall item={kpiData[0]} />
+            </div>
+
+            {/* ── CELL 3: KPI tall — Đơn hàng (col 4, row 2) ── */}
+            <div className="db-cell db-cell-kpi-r2">
+              <KpiTall item={kpiData[1]} />
+            </div>
+
+            {/* ── CELL 4: KPI small — Khách hàng (col 1, row 3) ── */}
+            <div className="db-cell db-cell-kpi-b1">
+              <KpiSmall item={kpiData[2]} fillColor="#1d4ed8" fillPct={72} />
+            </div>
+
+            {/* ── CELL 5: KPI small — Lợi nhuận (col 2, row 3) ── */}
+            <div className="db-cell db-cell-kpi-b2">
+              <KpiSmall item={kpiData[3]} fillColor="#be185d" fillPct={88} />
+            </div>
+
+            {/* ── CELL 6: Pie chart (col 3-4, row 3) ── */}
+            <div className="db-cell db-cell-pie">
+              <div className="db-cell-hd">
+                <p className="db-cell-hd-title">Top Set Bán Chạy</p>
+                <span className="db-cell-hd-sub">
+                  {setData.length} bộ bán chạy
+                </span>
               </div>
-              <div
-                style={{ width: "100%", height: "300px", minHeight: "300px" }}
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={setData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={8}
-                      dataKey="value"
-                    >
+              <div className="db-pie-body">
+                {setData.length > 0 ? (
+                  <>
+                    {/* Chart donut — cố định kích thước, không dùng ResponsiveContainer */}
+                    <div className="db-pie-chart-wrap">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={setData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={46}
+                            outerRadius={70}
+                            paddingAngle={5}
+                            dataKey="value"
+                            startAngle={90}
+                            endAngle={-270}
+                          >
+                            {setData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={COLORS[index % COLORS.length]}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              background: "#fff",
+                              border: "0.5px solid #e2ded6",
+                              borderRadius: 8,
+                              fontSize: 12,
+                              color: "#1c1917",
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Custom legend dọc bên phải — tên không bị cắt */}
+                    <div className="db-pie-legend">
                       {setData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
+                        <div key={index} className="db-pie-legend-item">
+                          <div
+                            className="db-pie-dot"
+                            style={{
+                              background: COLORS[index % COLORS.length],
+                            }}
+                          />
+                          <span
+                            className="db-pie-legend-name"
+                            title={entry.name}
+                          >
+                            {entry.name}
+                          </span>
+                          <span className="db-pie-legend-val">
+                            {entry.value}
+                          </span>
+                        </div>
                       ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: "#1a1a1a",
-                        border: "1px solid #d4af37",
-                        borderRadius: "12px",
-                        color: "#fff",
-                      }}
-                    />
-                    <Legend
-                      verticalAlign="bottom"
-                      height={36}
-                      iconType="circle"
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                    </div>
+                  </>
+                ) : (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--subtle)",
+                      textAlign: "center",
+                      width: "100%",
+                    }}
+                  >
+                    Chưa có dữ liệu sản phẩm
+                  </div>
+                )}
               </div>
             </div>
-          </Col>
-        </Row>
+          </div>
+
+          {/* RECENT ORDERS */}
+          <div className="db-orders-card">
+            <div className="db-orders-hd">
+              <h5 className="db-orders-title">
+                <FaShoppingBag />
+                Đơn Hàng Gần Đây
+              </h5>
+              <button className="db-view-all">Xem tất cả</button>
+            </div>
+
+            {orders.length === 0 ? (
+              <div className="db-empty">
+                <div className="db-empty-icon">
+                  <FaShoppingBag />
+                </div>
+                <div>Chưa có đơn hàng nào</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>
+                  Khi có đơn mới, sẽ hiển thị tại đây
+                </div>
+              </div>
+            ) : (
+              <table className="db-table">
+                <thead>
+                  <tr>
+                    <th>Mã Đơn</th>
+                    <th>Khách Hàng</th>
+                    <th>Sản Phẩm</th>
+                    <th>Ngày Đặt</th>
+                    <th>Tổng Tiền</th>
+                    <th>Trạng Thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentOrders.map((order, idx) => (
+                    <tr key={idx}>
+                      <td>
+                        <span className="db-order-id">{order.id}</span>
+                      </td>
+                      <td style={{ fontWeight: 500 }}>{order.user}</td>
+                      <td>
+                        <span className="db-order-product">
+                          {order.product}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 12, color: "var(--muted)" }}>
+                        {order.date}
+                      </td>
+                      <td>
+                        <span className="db-order-amount">{order.total}</span>
+                      </td>
+                      <td>
+                        <StatusBadge status={order.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
       )}
-
-      {/* ĐƠN HÀNG GẦN ĐÂY */}
-      <div className="table-card shadow-gold-glow rounded-4 overflow-hidden">
-        <div className="p-4 d-flex justify-content-between align-items-center border-bottom border-gold border-opacity-25">
-          <h5 className="fw-bold mb-0 text-gold">
-            <FaShoppingBag className="me-2" /> Đơn Hàng Gần Đây
-          </h5>
-          <Badge bg="gold" className="px-3 py-2">
-            Xem tất cả
-          </Badge>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" variant="gold" />
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="text-center py-5 text-gold-light">
-            <FaShoppingBag size={60} className="mb-4 opacity-50" />
-            <h5>Chưa có đơn hàng nào</h5>
-            <p className="small">Khi có đơn mới, sẽ hiển thị tại đây</p>
-          </div>
-        ) : (
-          <Table hover responsive className="custom-table mb-0">
-            <thead>
-              <tr>
-                <th>Mã Đơn</th>
-                <th>Khách Hàng</th>
-                <th>Sản Phẩm</th>
-                <th>Ngày Đặt</th>
-                <th>Tổng Tiền</th>
-                <th>Trạng Thái</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentOrders.map((order, idx) => (
-                <tr key={idx} className="hover-gold-row">
-                  <td className="fw-bold text-gold">{order.id}</td>
-                  <td>{order.user}</td>
-                  <td className="text-truncate" style={{ maxWidth: "180px" }}>
-                    {order.product}
-                  </td>
-                  <td>{order.date}</td>
-                  <td className="fw-bold text-success">{order.total}</td>
-                  <td>{getStatusBadge(order.status)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-      </div>
     </div>
   );
 };

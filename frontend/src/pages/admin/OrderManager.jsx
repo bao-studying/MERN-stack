@@ -260,9 +260,12 @@ const COLUMNS = [
    ORDER CARD
 ───────────────────────────────────────────────────────────────────────────── */
 const OrderCard = ({ order, onView }) => {
-  const amount = order.totalAmount_cents
-    ? (order.totalAmount_cents / 1000).toLocaleString() + " đ"
-    : "N/A";
+const amount = order.totalAmount_cents
+  ? new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(order.totalAmount_cents)
+  : "N/A";
   const date = order.createdAt
     ? new Date(order.createdAt).toLocaleDateString("vi-VN", {
         day: "2-digit",
