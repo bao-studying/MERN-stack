@@ -187,24 +187,7 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
     },
     // "Tài Khoản" is replaced by the dropdown below — keep roles for reference
     // { path: "/admin/customers", label: "Tài Khoản", icon: <FaUsers />, roles: ["admin","manager"] },
-    {
-      path: "/admin/stats",
-      label: "Thống kê",
-      icon: <FaChartBar />,
-      roles: ["admin"],
-    },
-    {
-      path: "/admin/settings",
-      label: "Cấu hình",
-      icon: <FaCogs />,
-      roles: ["admin"],
-    },
-    {
-      path: "/admin/logs",
-      label: "Nhật ký",
-      icon: <FaShieldAlt />,
-      roles: ["admin"],
-    },
+     
   ];
 
   /* ── Sub-links for Tài Khoản dropdown ── */
@@ -341,41 +324,7 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
           )}
 
           {/* ── Group 2: admin-only items ── */}
-          {[
-            {
-              path: "/admin/stats",
-              label: "Thống kê",
-              icon: <FaChartBar />,
-              roles: ["admin"],
-            },
-            {
-              path: "/admin/settings",
-              label: "Cấu hình",
-              icon: <FaCogs />,
-              roles: ["admin"],
-            },
-            {
-              path: "/admin/logs",
-              label: "Nhật ký",
-              icon: <FaShieldAlt />,
-              roles: ["admin"],
-            },
-          ].map((item) => {
-            if (!user || !item.roles.includes(user.role)) return null;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  `sidebar-link ${isActive ? "active" : ""}`
-                }
-                onClick={closeSidebar}
-              >
-                <span className="fs-5">{item.icon}</span>
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
+        
         </nav>
 
         {/* Footer */}
