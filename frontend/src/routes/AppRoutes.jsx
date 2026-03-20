@@ -22,7 +22,7 @@ import OrderManager from "../pages/admin/OrderManager";
 import CustomerManager from "../pages/admin/CustomerManager";
 import StatsPage from "../pages/admin/StatsPage";
 import SettingsPage from "../pages/admin/SettingsPage";
-import SystemLogPage from '../pages/admin/SystemLogPage';
+import SystemLogPage from "../pages/admin/SystemLogPage";
 import AdminProfile from "../pages/admin/AdminProfile";
 import CategoryManager from "../pages/admin/CategoryManager";
 import SuccessPage from "../pages/client/SuccessPage";
@@ -30,6 +30,9 @@ import SuccessPage from "../pages/client/SuccessPage";
 import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
 
 import ProtectedRoute from "./ProtectedRoute";
+import AdminMessages from "../../src/pages/admin/AdminMessages";
+import AdminVoucherManager from "../pages/admin/AdminVoucher";
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -64,8 +67,8 @@ const AppRoutes = () => {
         <Route path="/admin" element={<AdminLayout />}>
           {/* Dashboard: Staff xem được (hoặc chặn nếu muốn) */}
           <Route index element={<DashboardPage />} />
-          
-          <Route path="profile" element={<AdminProfile />}/>
+
+          <Route path="profile" element={<AdminProfile />} />
 
           {/* 2. Quản lý Sản phẩm: Chỉ Admin và Manager */}
           <Route
@@ -74,7 +77,7 @@ const AppRoutes = () => {
             <Route path="products" element={<ProductManager />} />
             <Route path="categories" element={<CategoryManager />} />
           </Route>
-
+          <Route path="vouchers" element={<AdminVoucherManager />} />
           {/* 3. Quản lý Đơn hàng: Cả 3 đều được vào */}
           <Route
             element={
@@ -82,6 +85,7 @@ const AppRoutes = () => {
             }
           >
             <Route path="orders" element={<OrderManager />} />
+            <Route path="messages" element={<AdminMessages />} />
           </Route>
 
           {/* 4. Quản lý Khách hàng*/}
@@ -101,7 +105,6 @@ const AppRoutes = () => {
             <Route path="settings" element={<SettingsPage />} />
             <Route path="logs" element={<SystemLogPage />} />
           </Route>
-          
         </Route>
       </Route>
     </Routes>

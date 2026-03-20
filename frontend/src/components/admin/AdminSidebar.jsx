@@ -12,6 +12,8 @@ import {
   FaBookOpen,
   FaUserTie,
   FaChevronDown,
+  FaComments,
+  FaTicketAlt,
 } from "react-icons/fa";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -112,7 +114,12 @@ const DROPDOWN_STYLES = `
    DROPDOWN MENU ITEM
    — hover to open (CSS), click to toggle (JS fallback for touch devices)
 ───────────────────────────────────────────────────────────────────────────── */
-const DropdownMenuItem = ({ trigger, children, isParentActive, closeSidebar }) => {
+const DropdownMenuItem = ({
+  trigger,
+  children,
+  isParentActive,
+  closeSidebar,
+}) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -133,9 +140,7 @@ const DropdownMenuItem = ({ trigger, children, isParentActive, closeSidebar }) =
 
       {/* Submenu */}
       <div className="sb-submenu">
-        <div className="sb-submenu-inner">
-          {children}
-        </div>
+        <div className="sb-submenu-inner">{children}</div>
       </div>
     </div>
   );
@@ -172,6 +177,12 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
       path: "/admin/orders",
       label: "Đơn hàng",
       icon: <FaShoppingBag />,
+      roles: ["admin", "manager", "staff"],
+    },
+    {
+      path: "/admin/messages",
+      label: "Tin nhắn",
+      icon: <FaComments />,
       roles: ["admin", "manager", "staff"],
     },
     // "Tài Khoản" is replaced by the dropdown below — keep roles for reference
@@ -217,8 +228,7 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
   /* Is any account sub-page currently active? */
   const isAccountActive = location.pathname.startsWith("/admin/customers");
 
-  const canShowAccount =
-    user && ["admin", "manager"].includes(user.role);
+  const canShowAccount = user && ["admin", "manager"].includes(user.role);
 
   return (
     <>
@@ -242,10 +252,43 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
 
           {/* ── Group 1: luôn hiện với đủ role ── */}
           {[
-            { path: "/admin",            label: "Dashboard", icon: <FaTachometerAlt />, roles: ["admin","manager","staff"], end: true },
-            { path: "/admin/categories", label: "Danh mục",  icon: <FaBookOpen />,     roles: ["admin","manager"] },
-            { path: "/admin/products",   label: "Sản phẩm",  icon: <FaBox />,          roles: ["admin","manager"] },
-            { path: "/admin/orders",     label: "Đơn hàng",  icon: <FaShoppingBag />,  roles: ["admin","manager","staff"] },
+            {
+              path: "/admin",
+              label: "Dashboard",
+              icon: <FaTachometerAlt />,
+              roles: ["admin", "manager", "staff"],
+              end: true,
+            },
+            {
+              path: "/admin/categories",
+              label: "Danh mục",
+              icon: <FaBookOpen />,
+              roles: ["admin", "manager"],
+            },
+            {
+              path: "/admin/products",
+              label: "Sản phẩm",
+              icon: <FaBox />,
+              roles: ["admin", "manager"],
+            },
+            {
+              path: "/admin/orders",
+              label: "Đơn hàng",
+              icon: <FaShoppingBag />,
+              roles: ["admin", "manager", "staff"],
+            },
+            {
+              path: "/admin/messages",
+              label: "Tin nhắn",
+              icon: <FaComments />,
+              roles: ["admin", "manager", "staff"],
+            },
+            {
+              path: "/admin/vouchers",
+              label: "Voucher",
+              icon: <FaTicketAlt />,
+              roles: ["admin", "manager"],
+            },
           ].map((item) => {
             if (!user || !item.roles.includes(user.role)) return null;
             return (
@@ -253,7 +296,9 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
                 key={item.path}
                 to={item.path}
                 end={!!item.end}
-                className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}
+                className={({ isActive }) =>
+                  `sidebar-link ${isActive ? "active" : ""}`
+                }
                 onClick={closeSidebar}
               >
                 <span className="fs-5">{item.icon}</span>
@@ -271,10 +316,15 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
             >
               {accountSubItems.map((sub) => {
                 if (!user || !sub.roles.includes(user.role)) return null;
-                const subType     = new URLSearchParams(sub.path.split("?")[1]).get("type");
-                const currentType = new URLSearchParams(location.search).get("type");
+                const subType = new URLSearchParams(sub.path.split("?")[1]).get(
+                  "type",
+                );
+                const currentType = new URLSearchParams(location.search).get(
+                  "type",
+                );
                 const isSubActive =
-                  location.pathname === "/admin/customers" && currentType === subType;
+                  location.pathname === "/admin/customers" &&
+                  currentType === subType;
                 return (
                   <NavLink
                     key={sub.path}
@@ -292,16 +342,33 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
 
           {/* ── Group 2: admin-only items ── */}
           {[
-            { path: "/admin/stats",    label: "Thống kê", icon: <FaChartBar />,  roles: ["admin"] },
-            { path: "/admin/settings", label: "Cấu hình", icon: <FaCogs />,      roles: ["admin"] },
-            { path: "/admin/logs",     label: "Nhật ký",  icon: <FaShieldAlt />, roles: ["admin"] },
+            {
+              path: "/admin/stats",
+              label: "Thống kê",
+              icon: <FaChartBar />,
+              roles: ["admin"],
+            },
+            {
+              path: "/admin/settings",
+              label: "Cấu hình",
+              icon: <FaCogs />,
+              roles: ["admin"],
+            },
+            {
+              path: "/admin/logs",
+              label: "Nhật ký",
+              icon: <FaShieldAlt />,
+              roles: ["admin"],
+            },
           ].map((item) => {
             if (!user || !item.roles.includes(user.role)) return null;
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
-                className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}
+                className={({ isActive }) =>
+                  `sidebar-link ${isActive ? "active" : ""}`
+                }
                 onClick={closeSidebar}
               >
                 <span className="fs-5">{item.icon}</span>

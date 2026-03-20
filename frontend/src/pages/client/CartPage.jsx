@@ -20,9 +20,12 @@ import {
   FaShoppingCart,
   FaTicketAlt,
   FaShieldAlt,
+  FaTimes,
 } from "react-icons/fa";
 import { useAuth } from "../../hooks/useAuth";
 import { useCart } from "../../hooks/useCart";
+import axiosClient from "../../services/axiosClient";
+import toast from "react-hot-toast";
 import "../../assets/styles/cart-checkout.css";
 
 const CartPage = () => {
@@ -32,6 +35,12 @@ const CartPage = () => {
 
   const [selectedItems, setSelectedItems] = useState([]);
   const [couponCode, setCouponCode] = useState("");
+
+  // ── VOUCHER STATE (thêm mới) ──────────────────────────────────
+  const [voucherLoading, setVoucherLoading] = useState(false);
+  const [appliedVoucher, setAppliedVoucher] = useState(null); // { _id, code, description, type, discount }
+  const [voucherError, setVoucherError] = useState("");
+  // ─────────────────────────────────────────────────────────────
 
   // --- SAFE GUARD: Lọc sạch item lỗi (GIỮ NGUYÊN) ---
   const validCartItems = useMemo(() => {
@@ -81,12 +90,70 @@ const CartPage = () => {
   const SHIPPING_FEE = 30000;
   const isFreeShip = subtotal >= FREESHIP_THRESHOLD;
   const currentShippingFee = subtotal > 0 && !isFreeShip ? SHIPPING_FEE : 0;
-  const finalTotal = subtotal + currentShippingFee;
+
+  // ── TÍNH DISCOUNT & TOTAL (thêm mới, không đổi các biến cũ) ──
+  const discountAmount = appliedVoucher?.discount || 0;
+  // Freeship voucher → miễn phí ship
+  const effectiveShipping =
+    appliedVoucher?.type === "freeship" ? 0 : currentShippingFee;
+  const finalTotal = subtotal + effectiveShipping - discountAmount;
+  // ─────────────────────────────────────────────────────────────
+
   const progress = Math.min((subtotal / FREESHIP_THRESHOLD) * 100, 100);
   const isAllSelected =
     validCartItems.length > 0 && selectedItems.length === validCartItems.length;
 
-  // --- CSS CUSTOM NỘI BỘ CHO LUXURY UI ---
+  // ── ÁP DỤNG VOUCHER (thêm mới) ───────────────────────────────
+  const handleApplyVoucher = async () => {
+    if (!couponCode.trim()) return;
+    setVoucherError("");
+    setVoucherLoading(true);
+    try {
+      const res = await axiosClient.post("/vouchers/validate", {
+        code: couponCode.trim(),
+        orderAmount: subtotal,
+      });
+      if (res.success) {
+        setAppliedVoucher({
+          _id: res.voucher._id,
+          code: res.voucher.code,
+          description: res.voucher.description,
+          type: res.voucher.type,
+          discount: res.discount,
+        });
+        toast.success(
+          `Áp dụng "${res.voucher.code}" thành công! Giảm ${res.discount.toLocaleString("vi-VN")}đ`,
+        );
+        setCouponCode("");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || "Mã voucher không hợp lệ";
+      setVoucherError(msg);
+      setAppliedVoucher(null);
+    } finally {
+      setVoucherLoading(false);
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherError("");
+    toast("Đã xóa voucher", { icon: "🗑️" });
+  };
+  // ─────────────────────────────────────────────────────────────
+
+  // ── NAVIGATE KÈM VOUCHER INFO (thêm mới) ─────────────────────
+  const handleCheckout = () => {
+    navigate("/checkout", {
+      state: {
+        appliedVoucher: appliedVoucher || null,
+        discount: discountAmount,
+      },
+    });
+  };
+  // ─────────────────────────────────────────────────────────────
+
+  // --- CSS CUSTOM NỘI BỘ CHO LUXURY UI (GIỮ NGUYÊN) ---
   const customStyles = `
     .bg-dark-premium { background-color: #0a0a0a; }
     .card-dark { background: #141414; border: 1px solid #2a2a2a; border-radius: 16px; }
@@ -111,6 +178,22 @@ const CartPage = () => {
     .step-item-premium.active .step-circle { border-color: #d4af37; background: #d4af37; color: #000; box-shadow: 0 0 15px rgba(212,175,55,0.4); }
     .step-text { color: #666; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
     .step-item-premium.active .step-text { color: #d4af37; }
+
+    /* ── VOUCHER APPLIED CHIP (thêm mới) ── */
+    .voucher-applied {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; border-radius: 8px;
+      background: rgba(212,175,55,.08); border: 1px solid rgba(212,175,55,.3);
+      margin-top: 8px; animation: fadeSlideIn .2s ease;
+    }
+    .voucher-applied-left { display: flex; align-items: center; gap: 8px; }
+    .voucher-applied-code { font-size: 13px; font-weight: 700; color: #d4af37; letter-spacing: .5px; }
+    .voucher-applied-desc { font-size: 11px; color: #888; }
+    .voucher-applied-amount { font-size: 13px; font-weight: 700; color: #4ade80; }
+    .voucher-remove-btn { background: none; border: none; color: #666; cursor: pointer; padding: 2px; border-radius: 4px; display: flex; align-items: center; transition: color .15s; }
+    .voucher-remove-btn:hover { color: #ef4444; }
+    .voucher-error { font-size: 11.5px; color: #ef4444; margin-top: 5px; }
+    @keyframes fadeSlideIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
   `;
 
   if (!user) {
@@ -175,7 +258,7 @@ const CartPage = () => {
     <div className="bg-dark-premium min-vh-100 pb-5 pt-4 text-white">
       <style>{customStyles}</style>
       <Container>
-        {/* Step Wizard Nâng cấp */}
+        {/* Step Wizard Nâng cấp (GIỮ NGUYÊN) */}
         <div className="step-wizard-premium">
           <div className="step-item-premium active">
             <div className="shadow-gold step-circle">1</div>
@@ -192,7 +275,7 @@ const CartPage = () => {
         </div>
 
         <Row className="gy-4">
-          {/* LEFT: CART ITEMS */}
+          {/* LEFT: CART ITEMS (GIỮ NGUYÊN HOÀN TOÀN) */}
           <Col lg={8}>
             <div className="card-dark p-3 mb-4 d-flex justify-content-between align-items-center">
               <Form.Check
@@ -347,15 +430,15 @@ const CartPage = () => {
             <div
               className="card-dark sticky-top rounded-4 overflow-hidden"
               style={{
-                top: "100px", // điều chỉnh nếu header cao hơn
-                zIndex: 100, // đảm bảo luôn ở trên
+                top: "100px",
+                zIndex: 100,
                 background: "linear-gradient(145deg, #141414, #0f0f0f)",
                 border: "1px solid rgba(212,175,55,0.25)",
                 boxShadow:
                   "0 10px 30px rgba(0,0,0,0.6), inset 0 0 20px rgba(212,175,55,0.08)",
               }}
             >
-              {/* Header Tổng kết */}
+              {/* Header (GIỮ NGUYÊN) */}
               <div className="p-4 border-bottom border-gold border-opacity-25 bg-black bg-opacity-50">
                 <h5 className="fw-bold mb-0 text-gold d-flex align-items-center gap-2">
                   <FaShieldAlt /> Tổng kết giao dịch
@@ -363,7 +446,7 @@ const CartPage = () => {
               </div>
 
               <div className="p-4">
-                {/* Freeship Progress */}
+                {/* Freeship Progress (GIỮ NGUYÊN) */}
                 <div className="mb-4 p-3 rounded-3 bg-dark border border-gold border-opacity-10">
                   {subtotal > 0 ? (
                     <>
@@ -391,7 +474,7 @@ const CartPage = () => {
                           aria-valuenow={progress}
                           aria-valuemin="0"
                           aria-valuemax="100"
-                        ></div>
+                        />
                       </div>
                     </>
                   ) : (
@@ -401,32 +484,100 @@ const CartPage = () => {
                   )}
                 </div>
 
-                {/* Voucher */}
-                <div className="mb-5">
+                {/* ── VOUCHER SECTION (thay thế alert cũ) ── */}
+                <div className="mb-4">
                   <label className="form-label small fw-bold text-gold mb-2">
                     MÃ ĐẶC QUYỀN / VOUCHER
                   </label>
-                  <div className="input-group rounded-pill overflow-hidden border border-gold border-opacity-30">
-                    <span className="input-group-text bg-dark border-0 text-gold">
-                      <FaTicketAlt />
-                    </span>
-                    <Form.Control
-                      placeholder="Nhập mã khuyến mãi"
-                      className="bg-dark text-white border-0 shadow-none"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                    />
-                    <Button
-                      variant="outline-gold"
-                      className="border-gold text-gold px-4 hover-lift"
-                      onClick={() =>
-                        alert("Tính năng áp dụng voucher đang được phát triển!")
-                      }
-                    >
-                      Áp dụng
-                    </Button>
-                  </div>
+
+                  {/* Nếu chưa áp → hiện ô nhập */}
+                  {!appliedVoucher ? (
+                    <>
+                      <div className="input-group rounded-pill overflow-hidden border border-gold border-opacity-30">
+                        <span className="input-group-text bg-dark border-0 text-gold">
+                          <FaTicketAlt />
+                        </span>
+                        <Form.Control
+                          placeholder="Nhập mã khuyến mãi"
+                          className="bg-dark text-white border-0 shadow-none"
+                          value={couponCode}
+                          onChange={(e) => {
+                            setCouponCode(e.target.value);
+                            setVoucherError("");
+                          }}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && handleApplyVoucher()
+                          }
+                          disabled={
+                            voucherLoading || selectedItems.length === 0
+                          }
+                        />
+                        <Button
+                          variant="outline-gold"
+                          className="border-gold text-gold px-4"
+                          onClick={handleApplyVoucher}
+                          disabled={
+                            voucherLoading ||
+                            !couponCode.trim() ||
+                            selectedItems.length === 0
+                          }
+                        >
+                          {voucherLoading ? "..." : "Áp dụng"}
+                        </Button>
+                      </div>
+                      {/* Hint nếu chưa chọn sản phẩm */}
+                      {selectedItems.length === 0 && (
+                        <p
+                          style={{ fontSize: 11, color: "#666", marginTop: 4 }}
+                        >
+                          Chọn sản phẩm trước để áp voucher
+                        </p>
+                      )}
+                      {/* Error */}
+                      {voucherError && (
+                        <p className="voucher-error">{voucherError}</p>
+                      )}
+                    </>
+                  ) : (
+                    /* Voucher đã áp — hiện chip */
+                    <div className="voucher-applied">
+                      <div className="voucher-applied-left">
+                        <FaTicketAlt
+                          style={{ color: "#d4af37", fontSize: 14 }}
+                        />
+                        <div>
+                          <div className="voucher-applied-code">
+                            {appliedVoucher.code}
+                          </div>
+                          <div className="voucher-applied-desc">
+                            {appliedVoucher.description}
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <span className="voucher-applied-amount">
+                          {appliedVoucher.type === "freeship"
+                            ? "Freeship"
+                            : `-${appliedVoucher.discount.toLocaleString("vi-VN")}đ`}
+                        </span>
+                        <button
+                          className="voucher-remove-btn"
+                          onClick={handleRemoveVoucher}
+                          title="Xóa voucher"
+                        >
+                          <FaTimes size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+                {/* ── END VOUCHER ── */}
 
                 {/* Chi tiết hóa đơn */}
                 <div className="mb-4">
@@ -441,6 +592,10 @@ const CartPage = () => {
                     <span>Phí vận chuyển</span>
                     {subtotal === 0 ? (
                       <span className="text-white">0 đ</span>
+                    ) : appliedVoucher?.type === "freeship" ? (
+                      <span className="text-gold fw-bold">
+                        Miễn phí (voucher)
+                      </span>
                     ) : isFreeShip ? (
                       <span className="text-gold fw-bold">Miễn phí</span>
                     ) : (
@@ -450,9 +605,24 @@ const CartPage = () => {
                     )}
                   </div>
 
+                  {/* Dòng chiết khấu — chỉ hiện khi có voucher giảm tiền */}
+                  {discountAmount > 0 && (
+                    <div className="d-flex justify-content-between mb-3 text-secondary small">
+                      <span>Chiết khấu voucher</span>
+                      <span style={{ color: "#4ade80", fontWeight: 600 }}>
+                        - {discountAmount.toLocaleString()} đ
+                      </span>
+                    </div>
+                  )}
+
                   <div className="d-flex justify-content-between mb-4 pb-3 border-bottom border-secondary">
-                    <span className="text-secondary">Chiết khấu</span>
-                    <span className="text-gold fw-bold">- 0 đ</span>
+                    {/* Dòng này giữ nguyên như gốc nếu không có voucher */}
+                    {!appliedVoucher && (
+                      <>
+                        <span className="text-secondary">Chiết khấu</span>
+                        <span className="text-gold fw-bold">- 0 đ</span>
+                      </>
+                    )}
                   </div>
 
                   <div className="d-flex justify-content-between align-items-center">
@@ -461,15 +631,15 @@ const CartPage = () => {
                       className="fw-bold fs-4 text-gold"
                       style={{ textShadow: "0 0 8px rgba(212,175,55,0.4)" }}
                     >
-                      {finalTotal.toLocaleString()} đ
+                      {Math.max(0, finalTotal).toLocaleString()} đ
                     </span>
                   </div>
                 </div>
 
-                {/* Nút thanh toán */}
+                {/* Nút thanh toán — đổi onClick sang handleCheckout để truyền voucher */}
                 <Button
                   className="w-100 py-3 fs-5 fw-bold rounded-pill btn-gold-gradient shadow-gold hover-lift d-flex align-items-center justify-content-center gap-2"
-                  onClick={() => navigate("/checkout")}
+                  onClick={handleCheckout}
                   disabled={selectedItems.length === 0}
                 >
                   Tiến hành thanh toán <FaArrowRight />

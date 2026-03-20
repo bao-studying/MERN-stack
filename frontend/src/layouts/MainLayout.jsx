@@ -3,6 +3,8 @@ import { Outlet } from "react-router-dom";
 import { Container } from "react-bootstrap";
 import Header from "../components/common/Header"; // Import Header mới
 import Footer from "../components/common/Footer";
+import FloatingChat from "../context/FloatingChat";
+
 
 const MainLayout = () => {
   return (
@@ -13,6 +15,7 @@ const MainLayout = () => {
       {/* Nội dung chính */}
       <main className="flex-grow-1">
         <Outlet />
+    <FloatingChat />  
       </main>
 
       {/* Footer (Giữ tạm hoặc tách ra file riêng sau) */}
