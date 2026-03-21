@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Badge, Spinner, Alert } from "react-bootstrap";
 import {
   FaShoppingBag,
@@ -8,6 +8,7 @@ import {
   FaCrown,
   FaArrowUp,
   FaArrowDown,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import {
   AreaChart,
@@ -25,6 +26,8 @@ import {
 import { useAdminTheme } from "../../context/useAdminTheme";
 import orderApi from "../../services/order.service";
 import "../../assets/styles/admin.css";
+
+// Thêm icon này vào chỗ import react-icons:
 
 /* ─────────────────────────────────────────────────────────────────────────────
    STYLES — scoped to .db-root
@@ -538,6 +541,39 @@ const DashboardPage = () => {
 
     fetchOrders();
   }, []);
+  // 1. Tạo State lưu ngày (Mặc định lọc 7 ngày gần nhất)
+  const [dateRange, setDateRange] = useState({
+    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0],
+    end: new Date().toISOString().split("T")[0],
+  });
+
+  // 2. Logic lọc dữ liệu cho biểu đồ (Dùng useMemo để không bị lag khi render)
+  const filteredRevenueData = useMemo(() => {
+    const startTime = new Date(dateRange.start).getTime();
+    const endTime = new Date(dateRange.end).setHours(23, 59, 59, 999);
+
+    const revenueByDay = orders.reduce((acc, order) => {
+      const orderTime = new Date(order.createdAt).getTime();
+      if (orderTime >= startTime && orderTime <= endTime) {
+        const dateLabel = new Date(order.createdAt).toLocaleDateString(
+          "vi-VN",
+          {
+            day: "2-digit",
+            month: "2-digit",
+          },
+        );
+        acc[dateLabel] = (acc[dateLabel] || 0) + (order.totalAmount_cents || 0);
+      }
+      return acc;
+    }, {});
+
+    return Object.entries(revenueByDay).map(([name, doanhthu]) => ({
+      name,
+      doanhthu,
+    }));
+  }, [orders, dateRange]);
 
   // ================== TÍNH TOÁN AN TOÀN ==================
   const safeReduce = (arr, callback, initialValue) => {
@@ -728,16 +764,40 @@ const DashboardPage = () => {
           <div className="db-bento">
             {/* ── CELL 1: Area chart (large, col 1-3, row 1-2) ── */}
             <div className="db-cell db-cell-area">
-              <div className="db-cell-hd">
-                <p className="db-cell-hd-title">Doanh Thu Tuần Này</p>
-                <span className="db-cell-hd-sub">
-                  Tổng booster & sealed product
-                </span>
+              <div className="db-cell-hd d-flex justify-content-between align-items-center flex-wrap">
+                <div>
+                  <p className="db-cell-hd-title">Phân Tích Doanh Thu</p>
+                  <span className="db-cell-hd-sub">
+                    Dữ liệu từ hệ thống real-time
+                  </span>
+                </div>
+
+                {/* BỘ LỌC NGÀY - THÊM ĐOẠN NÀY */}
+                <div className="d-flex align-items-center gap-2 p-1 px-2 rounded-pill bg-light border">
+                  <FaCalendarAlt className="text-muted small" />
+                  <input
+                    type="date"
+                    className="border-0 bg-transparent fw-bold small outline-none"
+                    value={dateRange.start}
+                    onChange={(e) =>
+                      setDateRange({ ...dateRange, start: e.target.value })
+                    }
+                  />
+                  <span className="text-muted">—</span>
+                  <input
+                    type="date"
+                    className="border-0 bg-transparent fw-bold small outline-none"
+                    value={dateRange.end}
+                    onChange={(e) =>
+                      setDateRange({ ...dateRange, end: e.target.value })
+                    }
+                  />
+                </div>
               </div>
               <div className="db-chart-body" style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
-                    data={revenueData}
+                    data={filteredRevenueData}
                     margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
                   >
                     <defs>

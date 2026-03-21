@@ -14,6 +14,12 @@ import {
   FaChevronDown,
   FaComments,
   FaTicketAlt,
+  FaChartPie,
+  FaLayerGroup,
+  FaCube,
+  FaClipboardList,
+  FaRegEnvelope,
+  FaPercentage,
 } from "react-icons/fa";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -187,7 +193,6 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
     },
     // "Tài Khoản" is replaced by the dropdown below — keep roles for reference
     // { path: "/admin/customers", label: "Tài Khoản", icon: <FaUsers />, roles: ["admin","manager"] },
-     
   ];
 
   /* ── Sub-links for Tài Khoản dropdown ── */
@@ -238,38 +243,38 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
             {
               path: "/admin",
               label: "Dashboard",
-              icon: <FaTachometerAlt />,
+              icon: <FaChartPie />, // Thay cho FaTachometerAlt (nhìn hiện đại hơn)
               roles: ["admin", "manager", "staff"],
               end: true,
             },
             {
               path: "/admin/categories",
               label: "Danh mục",
-              icon: <FaBookOpen />,
+              icon: <FaLayerGroup />, // Thay cho FaBookOpen (đúng chất quản lý phân loại hơn)
               roles: ["admin", "manager"],
             },
             {
               path: "/admin/products",
               label: "Sản phẩm",
-              icon: <FaBox />,
+              icon: <FaCube />, // Thay cho FaBox (nhìn gọn và sắc nét hơn)
               roles: ["admin", "manager"],
             },
             {
               path: "/admin/orders",
               label: "Đơn hàng",
-              icon: <FaShoppingBag />,
+              icon: <FaClipboardList />, // Thay cho FaShoppingBag (phù hợp với giao diện quản trị)
               roles: ["admin", "manager", "staff"],
             },
             {
               path: "/admin/messages",
               label: "Tin nhắn",
-              icon: <FaComments />,
+              icon: <FaRegEnvelope />, // Thay cho FaComments (kiểu phong bì tối giản)
               roles: ["admin", "manager", "staff"],
             },
             {
               path: "/admin/vouchers",
               label: "Voucher",
-              icon: <FaTicketAlt />,
+              icon: <FaPercentage />, // Thay cho FaTicketAlt (nhìn rõ tính chất khuyến mãi)
               roles: ["admin", "manager"],
             },
           ].map((item) => {
@@ -322,9 +327,6 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
               })}
             </DropdownMenuItem>
           )}
-
-          {/* ── Group 2: admin-only items ── */}
-        
         </nav>
 
         {/* Footer */}

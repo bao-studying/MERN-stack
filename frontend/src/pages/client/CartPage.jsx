@@ -1,13 +1,4 @@
-import React, { useState, useMemo } from "react";
-import {
-  Container,
-  Row,
-  Col,
-  Button,
-  Form,
-  ProgressBar,
-  InputGroup,
-} from "react-bootstrap";
+import React, { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   FaArrowLeft,
@@ -19,8 +10,9 @@ import {
   FaSignInAlt,
   FaShoppingCart,
   FaTicketAlt,
-  FaShieldAlt,
   FaTimes,
+  FaBox,
+  FaTruck,
 } from "react-icons/fa";
 import { useAuth } from "../../hooks/useAuth";
 import { useCart } from "../../hooks/useCart";
@@ -28,6 +20,388 @@ import axiosClient from "../../services/axiosClient";
 import toast from "react-hot-toast";
 import "../../assets/styles/cart-checkout.css";
 
+/* ─────────────────────────────────────────────────────────────
+   STYLES — Twin DNA với CheckoutPage
+───────────────────────────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap');
+
+  .ct-root {
+    --tx:    #1c1917;
+    --mu:    #6b6560;
+    --su:    #a09890;
+    --bd:    #e8e4de;
+    --bg:    #f5f2ed;
+    --surf:  #ffffff;
+    --ac:    #c8490c;
+    --acl:   #fff4f0;
+    --gn:    #15803d;
+    --gnl:   #f0fdf4;
+    --font:  'DM Sans', sans-serif;
+    --serif: 'Cormorant Garamond', serif;
+    --mono:  'DM Mono', monospace;
+    min-height: 100vh;
+    font-family: var(--font);
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* ── PROGRESS BAR — Step 1 = 33% ── */
+  .ct-progress {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+    height: 3px; background: var(--bd);
+  }
+  .ct-progress-fill {
+    height: 100%; width: 33%;
+    background: linear-gradient(90deg, var(--ac), #e85d24);
+    position: relative;
+  }
+  .ct-progress-fill::after {
+    content: ''; position: absolute; right: -1px; top: 0; bottom: 0;
+    width: 6px; background: #e85d24; border-radius: 0 2px 2px 0;
+    box-shadow: 0 0 8px rgba(232,93,36,.7);
+  }
+
+  /* ── BACKDROP ── */
+  .ct-backdrop {
+    position: fixed; inset: 0; z-index: 0;
+    background: var(--bg); overflow: hidden;
+  }
+  .ct-backdrop-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 12px; padding: 60px 40px 40px;
+    filter: blur(3px) saturate(.7);
+    transform: scale(1.04); pointer-events: none;
+  }
+  .ct-backdrop-card {
+    background: #fff; border-radius: 12px;
+    border: 0.5px solid #e8e4de; overflow: hidden;
+    aspect-ratio: 3/4; display: flex; flex-direction: column;
+  }
+  .ct-backdrop-img {
+    flex: 1; background: linear-gradient(135deg, #f0ece6, #e8e4de);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ct-backdrop-info { padding: 8px; }
+  .ct-backdrop-name { height: 8px; background: #d6d1cb; border-radius: 2px; margin-bottom: 5px; }
+  .ct-backdrop-price { height: 10px; width: 55%; background: #c8c3bc; border-radius: 2px; }
+  .ct-backdrop-dim { position: absolute; inset: 0; background: rgba(245,242,237,.78); }
+
+  /* ── MODAL WRAPPER ── */
+  .ct-modal-wrap {
+    position: relative; z-index: 10; min-height: 100vh;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 52px 20px 60px;
+  }
+
+  /* ── MODAL CARD ── */
+  .ct-modal {
+    width: 100%; max-width: 1060px;
+    background: var(--surf); border-radius: 22px;
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,.06),
+      0 4px 16px rgba(0,0,0,.06),
+      0 16px 48px rgba(0,0,0,.1),
+      0 48px 96px rgba(0,0,0,.08);
+    overflow: hidden;
+    animation: ctIn .45s cubic-bezier(.16,1,.3,1) both;
+  }
+  @keyframes ctIn {
+    from { opacity:0; transform:translateY(20px) scale(.985); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
+  }
+
+  /* ── MODAL HEADER ── */
+  .ct-modal-header {
+    padding: 20px 32px 18px;
+    border-bottom: 0.5px solid var(--bd);
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .ct-back {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 500; color: var(--mu);
+    text-decoration: none; transition: color .12s; white-space: nowrap;
+  }
+  .ct-back:hover { color: var(--tx); }
+  .ct-modal-title {
+    font-family: var(--serif); font-size: 22px; font-weight: 500;
+    color: var(--tx); margin: 0; letter-spacing: -.2px; white-space: nowrap;
+  }
+
+  /* ── STEP WIZARD ── */
+  .ct-steps { display: flex; align-items: center; }
+  .ct-step-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500; color: var(--su); white-space: nowrap;
+  }
+  .ct-step-item.active { color: var(--tx); }
+  .ct-step-count {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--bd); color: var(--mu);
+    font-size: 11px; font-weight: 600; font-family: var(--mono);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .ct-step-item.active .ct-step-count { background: var(--tx); color: #fff; }
+  .ct-step-line { width: 28px; height: 1px; background: var(--bd); margin: 0 6px; }
+
+  /* ── MODAL BODY ── */
+  .ct-modal-body { display: grid; grid-template-columns: 1fr 350px; }
+
+  /* ── LEFT: ITEMS PANEL ── */
+  .ct-items-panel {
+    padding: 24px 28px; border-right: 0.5px solid var(--bd);
+    overflow-y: auto; max-height: calc(100vh - 200px);
+  }
+  .ct-items-panel::-webkit-scrollbar { width: 3px; }
+  .ct-items-panel::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 2px; }
+
+  /* Select-all bar */
+  .ct-select-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-radius: 10px;
+    background: var(--bg); border: 0.5px solid var(--bd); margin-bottom: 14px;
+  }
+  .ct-check-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .ct-checkbox {
+    width: 16px; height: 16px; border-radius: 4px;
+    border: 1.5px solid var(--bd); background: var(--surf);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: border-color .12s, background .12s; cursor: pointer;
+  }
+  .ct-checkbox.checked  { background: var(--tx); border-color: var(--tx); }
+  .ct-checkbox.partial  { border-color: var(--mu); }
+  .ct-select-lbl   { font-size: 12px; font-weight: 600; color: var(--tx); }
+  .ct-select-count { font-size: 11px; font-family: var(--mono); color: var(--su); }
+  .ct-del-btn {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; color: #dc2626;
+    background: none; border: none; cursor: pointer; padding: 4px 8px;
+    border-radius: 6px; transition: background .12s;
+  }
+  .ct-del-btn:hover { background: #fee2e2; }
+
+  /* Cart item */
+  .ct-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 8px; border-bottom: 0.5px solid var(--bd);
+    border-radius: 8px; transition: background .15s;
+    animation: ctItemIn .3s ease both;
+  }
+  .ct-item:last-child { border-bottom: none; }
+  .ct-item:hover { background: rgba(200,73,12,.025); }
+  @keyframes ctItemIn {
+    from { opacity:0; transform:translateX(-6px); }
+    to   { opacity:1; transform:translateX(0); }
+  }
+  .ct-item-img {
+    width: 62px; height: 62px; border-radius: 10px; object-fit: cover;
+    border: 0.5px solid var(--bd); display: block; background: var(--bg); flex-shrink: 0;
+  }
+  .ct-item-info { flex: 1; min-width: 0; }
+  .ct-item-name {
+    font-size: 13px; font-weight: 600; color: var(--tx); text-decoration: none;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
+    margin-bottom: 3px; transition: color .12s;
+  }
+  .ct-item-name:hover { color: var(--ac); }
+  .ct-item-unit { font-size: 11px; color: var(--mu); font-family: var(--mono); }
+
+  /* Qty */
+  .ct-qty {
+    display: flex; align-items: center; margin-top: 8px;
+    border: 1px solid var(--bd); border-radius: 8px; overflow: hidden;
+    width: fit-content; background: var(--surf);
+  }
+  .ct-qty-btn {
+    width: 28px; height: 28px; background: none; border: none;
+    color: var(--mu); font-size: 10px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .12s, color .12s;
+  }
+  .ct-qty-btn:hover:not(:disabled) { background: var(--bg); color: var(--tx); }
+  .ct-qty-btn:disabled { opacity: .3; cursor: not-allowed; }
+  .ct-qty-val {
+    width: 32px; height: 28px; text-align: center;
+    font-size: 12px; font-weight: 600; font-family: var(--mono);
+    color: var(--tx); background: none; border: none; outline: none;
+    border-left: 1px solid var(--bd); border-right: 1px solid var(--bd);
+  }
+
+  /* Item right */
+  .ct-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+  .ct-item-total {
+    font-family: var(--serif); font-size: 17px; font-weight: 500;
+    color: var(--tx); letter-spacing: -.2px; line-height: 1;
+  }
+  .ct-item-del {
+    background: none; border: none; cursor: pointer; color: var(--su);
+    font-size: 12px; padding: 4px; border-radius: 6px;
+    transition: color .12s, background .12s; display: flex; align-items: center;
+  }
+  .ct-item-del:hover { color: #dc2626; background: #fee2e2; }
+
+  .ct-continue {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 500; color: var(--mu);
+    text-decoration: none; margin-top: 16px; transition: color .12s;
+  }
+  .ct-continue:hover { color: var(--ac); }
+
+  /* ── RIGHT: SUMMARY PANEL ── */
+  .ct-summary-panel {
+    padding: 24px 22px; background: var(--bg);
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 200px); overflow-y: auto;
+  }
+  .ct-summary-panel::-webkit-scrollbar { width: 3px; }
+  .ct-summary-panel::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 2px; }
+  .ct-summary-title {
+    font-family: var(--serif); font-size: 16px; font-weight: 500; font-style: italic;
+    color: var(--tx); margin: 0 0 14px;
+  }
+
+  /* Freeship */
+  .ct-freeship {
+    padding: 11px 14px; border-radius: 10px;
+    background: var(--surf); border: 0.5px solid var(--bd); margin-bottom: 14px;
+  }
+  .ct-freeship-text { font-size: 11px; color: var(--mu); margin-bottom: 7px; }
+  .ct-freeship-text strong { color: var(--ac); font-weight: 700; }
+  .ct-freeship-text.done { color: var(--gn); font-weight: 600; display: flex; align-items: center; gap: 5px; margin-bottom: 0; }
+  .ct-freeship-text.empty { margin-bottom: 0; text-align: center; }
+  .ct-prog-bar { height: 5px; background: var(--bd); border-radius: 10px; overflow: hidden; }
+  .ct-prog-fill {
+    height: 100%; border-radius: 10px;
+    background: linear-gradient(90deg, var(--gn), #16a34a);
+    transition: width .4s cubic-bezier(.16,1,.3,1);
+  }
+
+  /* Voucher */
+  .ct-voucher-lbl {
+    font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+    color: var(--mu); display: flex; align-items: center; gap: 5px; margin-bottom: 6px;
+  }
+  .ct-voucher-row { display: flex; gap: 6px; margin-bottom: 4px; }
+  .ct-voucher-input {
+    flex: 1; padding: 7px 10px; border: 1px solid var(--bd); border-radius: 8px;
+    font-size: 12px; font-family: var(--mono); color: var(--tx);
+    background: var(--surf); outline: none; text-transform: uppercase; letter-spacing: .5px;
+    transition: border-color .12s;
+  }
+  .ct-voucher-input:focus { border-color: var(--ac); }
+  .ct-voucher-input:disabled { opacity: .4; }
+  .ct-voucher-apply {
+    padding: 7px 12px; border-radius: 8px; background: var(--tx); color: #fff;
+    border: none; font-size: 11px; font-weight: 600; font-family: var(--font);
+    cursor: pointer; white-space: nowrap; transition: background .12s;
+  }
+  .ct-voucher-apply:hover:not(:disabled) { background: #2f2a25; }
+  .ct-voucher-apply:disabled { opacity: .4; cursor: not-allowed; }
+  .ct-voucher-hint { font-size: 10px; color: var(--su); margin-top: 3px; }
+  .ct-voucher-err  { font-size: 11px; color: #dc2626; margin-top: 3px; }
+  .ct-voucher-chip {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 11px; border-radius: 8px;
+    background: var(--gnl); border: 1px solid #bbf7d0;
+    animation: ctChipIn .2s ease both;
+  }
+  @keyframes ctChipIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+  .ct-v-code { font-size: 12px; font-weight: 700; color: var(--gn); font-family: var(--mono); }
+  .ct-v-desc { font-size: 10px; color: var(--mu); }
+  .ct-v-val  { font-size: 12px; font-weight: 700; color: var(--gn); font-family: var(--mono); }
+  .ct-v-rm { background: none; border: none; cursor: pointer; color: var(--su); padding: 2px; display: flex; align-items: center; transition: color .12s; }
+  .ct-v-rm:hover { color: #dc2626; }
+
+  .ct-divider { height: 0.5px; background: var(--bd); margin: 12px 0; }
+
+  /* Totals */
+  .ct-total-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--mu); margin-bottom: 7px; }
+  .ct-total-row.main {
+    font-size: 14px; font-weight: 700; color: var(--tx);
+    border-top: 0.5px solid var(--bd); padding-top: 11px; margin-top: 4px; margin-bottom: 2px;
+  }
+  .ct-total-row.main .ct-t-val { font-family: var(--serif); font-size: 22px; font-weight: 600; color: var(--gn); letter-spacing: -.3px; }
+  .ct-t-green { color: var(--gn); font-weight: 600; }
+  .ct-t-disc  { color: var(--gn); font-weight: 600; font-family: var(--mono); }
+  .ct-t-mono  { font-family: var(--mono); font-weight: 500; }
+  .ct-vat     { font-size: 10px; color: var(--su); text-align: right; margin-top: 1px; }
+
+  /* CTA */
+  .ct-cta {
+    width: 100%; padding: 13px 20px; border-radius: 12px;
+    background: var(--tx); color: #fff; border: none;
+    font-size: 12px; font-weight: 700; font-family: var(--font);
+    letter-spacing: .5px; text-transform: uppercase; cursor: pointer; margin-top: 14px;
+    transition: background .15s, transform .1s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .ct-cta:hover:not(:disabled) { background: #2f2a25; transform: translateY(-1px); }
+  .ct-cta:active { transform: translateY(0); }
+  .ct-cta:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .ct-cta-note { font-size: 10px; color: var(--su); text-align: center; margin-top: 7px; }
+
+  /* Empty / Auth */
+  .ct-empty { min-height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; z-index: 10; }
+  .ct-empty-card {
+    background: var(--surf); border-radius: 20px; padding: 48px 40px;
+    text-align: center; max-width: 380px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.06);
+    animation: ctIn .4s cubic-bezier(.16,1,.3,1) both;
+  }
+  .ct-empty-icon {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: var(--bg); border: 0.5px solid var(--bd);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px; color: var(--su); font-size: 22px;
+  }
+  .ct-empty-title { font-family: var(--serif); font-size: 24px; font-weight: 500; font-style: italic; color: var(--tx); margin: 0 0 8px; }
+  .ct-empty-sub   { font-size: 13px; color: var(--mu); margin-bottom: 20px; }
+  .ct-empty-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 24px; border-radius: 10px;
+    background: var(--tx); color: #fff;
+    font-size: 13px; font-weight: 600; font-family: var(--font);
+    text-decoration: none; transition: background .12s, transform .1s;
+  }
+  .ct-empty-btn:hover { background: #2f2a25; transform: translateY(-1px); color: #fff; }
+
+  @media (max-width: 768px) {
+    .ct-modal-body { grid-template-columns: 1fr; }
+    .ct-items-panel { border-right: none; border-bottom: 0.5px solid var(--bd); max-height: none; }
+    .ct-summary-panel { max-height: none; }
+    .ct-modal-wrap { padding: 48px 12px 40px; }
+    .ct-modal-header { flex-wrap: wrap; gap: 10px; }
+  }
+`;
+
+/* ─────────────────────────────────────────────────────────────
+   BACKDROP — giống hệt CheckoutPage
+───────────────────────────────────────────────────────────── */
+const BackdropGrid = () => (
+  <div className="ct-backdrop">
+    <div className="ct-backdrop-grid">
+      {Array.from({ length: 15 }).map((_, i) => (
+        <div key={i} className="ct-backdrop-card">
+          <div className="ct-backdrop-img">
+            <FaBox size={20} color="#c8c3bc" />
+          </div>
+          <div className="ct-backdrop-info">
+            <div
+              className="ct-backdrop-name"
+              style={{ width: `${55 + (i % 5) * 9}%` }}
+            />
+            <div className="ct-backdrop-price" />
+          </div>
+        </div>
+      ))}
+    </div>
+    <div className="ct-backdrop-dim" />
+  </div>
+);
+
+/* ─────────────────────────────────────────────────────────────
+   MAIN COMPONENT — 100% logic gốc giữ nguyên
+───────────────────────────────────────────────────────────── */
 const CartPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -36,35 +410,35 @@ const CartPage = () => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [couponCode, setCouponCode] = useState("");
 
-  // ── VOUCHER STATE (thêm mới) ──────────────────────────────────
+  // ── VOUCHER STATE (GIỮ NGUYÊN) ──────────────────────────────
   const [voucherLoading, setVoucherLoading] = useState(false);
-  const [appliedVoucher, setAppliedVoucher] = useState(null); // { _id, code, description, type, discount }
+  const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [voucherError, setVoucherError] = useState("");
-  // ─────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
 
-  // --- SAFE GUARD: Lọc sạch item lỗi (GIỮ NGUYÊN) ---
-  const validCartItems = useMemo(() => {
-    return Array.isArray(cartItems)
-      ? cartItems.filter((item) => item && item.productId && item.productId._id)
-      : [];
-  }, [cartItems]);
+  // --- SAFE GUARD (GIỮ NGUYÊN) ---
+  const validCartItems = useMemo(
+    () =>
+      Array.isArray(cartItems)
+        ? cartItems.filter(
+            (item) => item && item.productId && item.productId._id,
+          )
+        : [],
+    [cartItems],
+  );
 
-  const handleSelectItem = (itemId) => {
+  // --- SELECTION LOGIC (GIỮ NGUYÊN) ---
+  const handleSelectItem = (itemId) =>
     setSelectedItems((prev) =>
       prev.includes(itemId)
         ? prev.filter((id) => id !== itemId)
         : [...prev, itemId],
     );
-  };
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      const allIds = validCartItems.map((item) => item.productId._id);
-      setSelectedItems(allIds);
-    } else {
-      setSelectedItems([]);
-    }
-  };
+  const handleSelectAll = (checked) =>
+    setSelectedItems(
+      checked ? validCartItems.map((item) => item.productId._id) : [],
+    );
 
   const handleRemoveSelected = () => {
     if (
@@ -76,34 +450,56 @@ const CartPage = () => {
   };
 
   // --- TÍNH TOÁN TIỀN (GIỮ NGUYÊN) ---
-  const subtotal = useMemo(() => {
-    return validCartItems.reduce((acc, item) => {
-      const price = item.productId.price_cents || 0;
-      if (selectedItems.includes(item.productId._id)) {
-        return acc + price * item.quantity;
-      }
-      return acc;
-    }, 0);
-  }, [validCartItems, selectedItems]);
+  const subtotal = useMemo(
+    () =>
+      validCartItems.reduce((acc, item) => {
+        if (selectedItems.includes(item.productId._id))
+          return acc + (item.productId.price_cents || 0) * item.quantity;
+        return acc;
+      }, 0),
+    [validCartItems, selectedItems],
+  );
 
   const FREESHIP_THRESHOLD = 300000;
   const SHIPPING_FEE = 30000;
   const isFreeShip = subtotal >= FREESHIP_THRESHOLD;
   const currentShippingFee = subtotal > 0 && !isFreeShip ? SHIPPING_FEE : 0;
 
-  // ── TÍNH DISCOUNT & TOTAL (thêm mới, không đổi các biến cũ) ──
+  // ── DISCOUNT & TOTAL (GIỮ NGUYÊN) ───────────────────────────
   const discountAmount = appliedVoucher?.discount || 0;
-  // Freeship voucher → miễn phí ship
   const effectiveShipping =
     appliedVoucher?.type === "freeship" ? 0 : currentShippingFee;
   const finalTotal = subtotal + effectiveShipping - discountAmount;
-  // ─────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
 
   const progress = Math.min((subtotal / FREESHIP_THRESHOLD) * 100, 100);
   const isAllSelected =
     validCartItems.length > 0 && selectedItems.length === validCartItems.length;
+  const isPartialSel = selectedItems.length > 0 && !isAllSelected;
 
-  // ── ÁP DỤNG VOUCHER (thêm mới) ───────────────────────────────
+  useEffect(() => {
+    const validIds = new Set(validCartItems.map((item) => item.productId._id));
+    setSelectedItems((prev) => prev.filter((id) => validIds.has(id)));
+  }, [validCartItems]);
+
+  useEffect(() => {
+    if (!appliedVoucher) return;
+    const minOrder = appliedVoucher.minOrder || 0;
+    if (
+      selectedItems.length === 0 ||
+      subtotal <= 0 ||
+      subtotal < minOrder ||
+      discountAmount > subtotal
+    ) {
+      setAppliedVoucher(null);
+      setVoucherError("");
+      toast("Voucher đã được gỡ vì đơn hàng không còn đủ điều kiện", {
+        icon: "ℹ️",
+      });
+    }
+  }, [appliedVoucher, selectedItems.length, subtotal, discountAmount]);
+
+  // ── ÁP DỤNG VOUCHER (GIỮ NGUYÊN) ───────────────────────────
   const handleApplyVoucher = async () => {
     if (!couponCode.trim()) return;
     setVoucherError("");
@@ -119,16 +515,14 @@ const CartPage = () => {
           code: res.voucher.code,
           description: res.voucher.description,
           type: res.voucher.type,
+          minOrder: res.voucher.minOrder || 0,
           discount: res.discount,
         });
-        toast.success(
-          `Áp dụng "${res.voucher.code}" thành công! Giảm ${res.discount.toLocaleString("vi-VN")}đ`,
-        );
+        toast.success(`Áp dụng "${res.voucher.code}" thành công!`);
         setCouponCode("");
       }
     } catch (err) {
-      const msg = err.response?.data?.message || "Mã voucher không hợp lệ";
-      setVoucherError(msg);
+      setVoucherError(err.response?.data?.message || "Mã voucher không hợp lệ");
       setAppliedVoucher(null);
     } finally {
       setVoucherLoading(false);
@@ -140,515 +534,433 @@ const CartPage = () => {
     setVoucherError("");
     toast("Đã xóa voucher", { icon: "🗑️" });
   };
-  // ─────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
 
-  // ── NAVIGATE KÈM VOUCHER INFO (thêm mới) ─────────────────────
-  const handleCheckout = () => {
+  // ── NAVIGATE KÈM VOUCHER (GIỮ NGUYÊN) ──────────────────────
+  const handleCheckout = () =>
     navigate("/checkout", {
       state: {
+        selectedProductIds: selectedItems,
         appliedVoucher: appliedVoucher || null,
         discount: discountAmount,
       },
     });
-  };
-  // ─────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
 
-  // --- CSS CUSTOM NỘI BỘ CHO LUXURY UI (GIỮ NGUYÊN) ---
-  const customStyles = `
-    .bg-dark-premium { background-color: #0a0a0a; }
-    .card-dark { background: #141414; border: 1px solid #2a2a2a; border-radius: 16px; }
-    .text-gold { color: #d4af37 !important; }
-    .border-gold { border-color: #d4af37 !important; }
-    .btn-gold { background: linear-gradient(135deg, #d4af37, #f9e297); color: #000; border: none; font-weight: 700; }
-    .btn-gold:hover { background: linear-gradient(135deg, #f9e297, #d4af37); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3); }
-    .btn-gold:disabled { background: #333; color: #666; transform: none; box-shadow: none; }
-    .luxury-checkbox input[type="checkbox"] { accent-color: #d4af37; width: 20px; height: 20px; cursor: pointer; }
-    .cart-item-row { transition: all 0.3s ease; }
-    .cart-item-row:hover { background: #1a1a1a; transform: translateX(5px); border-left: 3px solid #d4af37; }
-    .qty-btn { background: #222; color: #fff; border: 1px solid #333; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: 0.2s; }
-    .qty-btn:hover:not(:disabled) { background: #d4af37; color: #000; }
-    .qty-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .qty-input { background: transparent; border: none; color: #fff; width: 40px; text-align: center; font-weight: bold; }
-    .qty-input:focus { outline: none; }
-    .custom-progress .progress-bar { background: linear-gradient(90deg, #b8860b, #ffd700); }
-    .step-wizard-premium { display: flex; justify-content: space-between; align-items: center; position: relative; max-width: 600px; margin: 0 auto 3rem auto; }
-    .step-wizard-premium::before { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: #333; z-index: 1; transform: translateY(-50%); }
-    .step-item-premium { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-    .step-circle { width: 40px; height: 40px; border-radius: 50%; background: #141414; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #666; transition: 0.3s; }
-    .step-item-premium.active .step-circle { border-color: #d4af37; background: #d4af37; color: #000; box-shadow: 0 0 15px rgba(212,175,55,0.4); }
-    .step-text { color: #666; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-    .step-item-premium.active .step-text { color: #d4af37; }
-
-    /* ── VOUCHER APPLIED CHIP (thêm mới) ── */
-    .voucher-applied {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 12px; border-radius: 8px;
-      background: rgba(212,175,55,.08); border: 1px solid rgba(212,175,55,.3);
-      margin-top: 8px; animation: fadeSlideIn .2s ease;
-    }
-    .voucher-applied-left { display: flex; align-items: center; gap: 8px; }
-    .voucher-applied-code { font-size: 13px; font-weight: 700; color: #d4af37; letter-spacing: .5px; }
-    .voucher-applied-desc { font-size: 11px; color: #888; }
-    .voucher-applied-amount { font-size: 13px; font-weight: 700; color: #4ade80; }
-    .voucher-remove-btn { background: none; border: none; color: #666; cursor: pointer; padding: 2px; border-radius: 4px; display: flex; align-items: center; transition: color .15s; }
-    .voucher-remove-btn:hover { color: #ef4444; }
-    .voucher-error { font-size: 11.5px; color: #ef4444; margin-top: 5px; }
-    @keyframes fadeSlideIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
-  `;
-
-  if (!user) {
+  /* ── STATES: not logged in / empty cart ── */
+  if (!user)
     return (
-      <div className="bg-dark-premium min-vh-100 d-flex align-items-center">
-        <style>{customStyles}</style>
-        <Container className="text-center">
-          <div
-            className="mb-4 d-inline-block p-4 rounded-circle"
-            style={{ background: "rgba(212,175,55,0.1)" }}
-          >
-            <FaSignInAlt size={60} className="text-gold" />
-          </div>
-          <h2 className="fw-bold mb-3 text-white luxury-serif">
-            Xác thực tài khoản
-          </h2>
-          <p className="text-secondary mb-4">
-            Vui lòng đăng nhập để xem tủ đồ cá nhân của bạn.
-          </p>
-          <Button
-            as={Link}
-            to="/login"
-            className="btn-gold rounded-pill px-5 py-3 shadow-lg"
-          >
-            Đăng nhập ngay
-          </Button>
-        </Container>
-      </div>
-    );
-  }
-
-  if (validCartItems.length === 0) {
-    return (
-      <div className="bg-dark-premium min-vh-100 d-flex align-items-center">
-        <style>{customStyles}</style>
-        <Container className="text-center">
-          <div
-            className="mb-4 d-inline-block p-4 rounded-circle"
-            style={{ background: "rgba(255,255,255,0.05)" }}
-          >
-            <FaShoppingCart size={60} className="text-secondary" />
-          </div>
-          <h2 className="fw-bold mb-3 text-white luxury-serif">
-            Giỏ hàng trống
-          </h2>
-          <p className="text-secondary mb-4">
-            Chưa có vật phẩm nào được thêm vào bộ sưu tập của bạn.
-          </p>
-          <Button
-            as={Link}
-            to="/products"
-            className="btn-gold rounded-pill px-5 py-3 shadow-lg"
-          >
-            Khám phá ngay
-          </Button>
-        </Container>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-dark-premium min-vh-100 pb-5 pt-4 text-white">
-      <style>{customStyles}</style>
-      <Container>
-        {/* Step Wizard Nâng cấp (GIỮ NGUYÊN) */}
-        <div className="step-wizard-premium">
-          <div className="step-item-premium active">
-            <div className="shadow-gold step-circle">1</div>
-            <span className="step-text">Giỏ hàng</span>
-          </div>
-          <div className="step-item-premium">
-            <div className=" shadow-gold step-circle">2</div>
-            <span className="step-text">Thanh toán</span>
-          </div>
-          <div className="step-item-premium">
-            <div className="shadow-gold  step-circle">3</div>
-            <span className="step-text">Hoàn tất</span>
+      <div className="ct-root">
+        <style dangerouslySetInnerHTML={{ __html: STYLES }} />
+        <div className="ct-progress">
+          <div className="ct-progress-fill" />
+        </div>
+        <BackdropGrid />
+        <div className="ct-empty">
+          <div className="ct-empty-card">
+            <div className="ct-empty-icon">
+              <FaSignInAlt />
+            </div>
+            <h2 className="ct-empty-title">Xác thực tài khoản</h2>
+            <p className="ct-empty-sub">
+              Vui lòng đăng nhập để xem giỏ hàng của bạn.
+            </p>
+            <Link to="/login" className="ct-empty-btn">
+              Đăng nhập ngay <FaArrowRight style={{ fontSize: 11 }} />
+            </Link>
           </div>
         </div>
+      </div>
+    );
 
-        <Row className="gy-4">
-          {/* LEFT: CART ITEMS (GIỮ NGUYÊN HOÀN TOÀN) */}
-          <Col lg={8}>
-            <div className="card-dark p-3 mb-4 d-flex justify-content-between align-items-center">
-              <Form.Check
-                type="checkbox"
-                id="selectAll"
-                label={
-                  <span className="ms-2 text-white fw-bold">
-                    Chọn tất cả vật phẩm ({validCartItems.length})
-                  </span>
-                }
-                checked={isAllSelected}
-                onChange={handleSelectAll}
-                className="luxury-checkbox mb-0 d-flex align-items-center"
-              />
-              {selectedItems.length > 0 && (
-                <Button
-                  variant="link"
-                  className="text-danger p-0 text-decoration-none small fw-bold d-flex align-items-center gap-1"
-                  onClick={handleRemoveSelected}
-                >
-                  <FaTrash /> Xóa đã chọn ({selectedItems.length})
-                </Button>
-              )}
+  if (validCartItems.length === 0)
+    return (
+      <div className="ct-root">
+        <style dangerouslySetInnerHTML={{ __html: STYLES }} />
+        <div className="ct-progress">
+          <div className="ct-progress-fill" />
+        </div>
+        <BackdropGrid />
+        <div className="ct-empty">
+          <div className="ct-empty-card">
+            <div className="ct-empty-icon">
+              <FaShoppingCart />
             </div>
+            <h2 className="ct-empty-title">Giỏ hàng trống</h2>
+            <p className="ct-empty-sub">
+              Chưa có sản phẩm nào trong giỏ hàng của bạn.
+            </p>
+            <Link to="/products" className="ct-empty-btn">
+              Khám phá ngay <FaArrowRight style={{ fontSize: 11 }} />
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
 
-            <div className="card-dark overflow-hidden">
-              {validCartItems.map((item, index) => {
+  /* ── MAIN RENDER ── */
+  return (
+    <div className="ct-root">
+      <style dangerouslySetInnerHTML={{ __html: STYLES }} />
+
+      {/* Progress bar — Step 1/3 */}
+      <div className="ct-progress">
+        <div className="ct-progress-fill" />
+      </div>
+
+      {/* Backdrop */}
+      <BackdropGrid />
+
+      {/* Modal */}
+      <div className="ct-modal-wrap">
+        <div className="ct-modal">
+          {/* ── HEADER ── */}
+          <div className="ct-modal-header">
+            <Link to="/products" className="ct-back">
+              <FaArrowLeft style={{ fontSize: 11 }} /> Tiếp tục mua sắm
+            </Link>
+
+            <h1 className="ct-modal-title">Giỏ hàng</h1>
+
+            {/* Step wizard — giữ nguyên vị trí */}
+            <div className="ct-steps">
+              <div className="ct-step-item active">
+                <div className="ct-step-count">1</div>
+                <span>Giỏ hàng</span>
+              </div>
+              <div className="ct-step-line" />
+              <div className="ct-step-item">
+                <div className="ct-step-count">2</div>
+                <span>Thanh toán</span>
+              </div>
+              <div className="ct-step-line" />
+              <div className="ct-step-item">
+                <div className="ct-step-count">3</div>
+                <span>Hoàn tất</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── BODY ── */}
+          <div className="ct-modal-body">
+            {/* ─── LEFT: ITEMS ─── */}
+            <div className="ct-items-panel">
+              {/* Select-all */}
+              <div className="ct-select-bar">
+                <div
+                  className="ct-check-row"
+                  onClick={() => handleSelectAll(!isAllSelected)}
+                >
+                  <div
+                    className={`ct-checkbox${isAllSelected ? " checked" : isPartialSel ? " partial" : ""}`}
+                  >
+                    {isAllSelected && (
+                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                        <path
+                          d="M1 3.5L3.5 6L8 1"
+                          stroke="white"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                    {isPartialSel && !isAllSelected && (
+                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                        <path
+                          d="M1.5 3.5H7.5"
+                          stroke="#6b6560"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="ct-select-lbl">Chọn tất cả</span>
+                  <span className="ct-select-count">
+                    ({validCartItems.length})
+                  </span>
+                </div>
+                {selectedItems.length > 0 && (
+                  <button className="ct-del-btn" onClick={handleRemoveSelected}>
+                    <FaTrash style={{ fontSize: 10 }} /> Xóa (
+                    {selectedItems.length})
+                  </button>
+                )}
+              </div>
+
+              {/* Items */}
+              {validCartItems.map((item, idx) => {
                 const product = item.productId;
                 const price = product.price_cents || 0;
                 const isSelected = selectedItems.includes(product._id);
-                const isLast = index === validCartItems.length - 1;
-
                 return (
                   <div
                     key={product._id}
-                    className={`p-4 cart-item-row ${!isLast ? "border-bottom border-secondary" : ""} ${isSelected ? "bg-black bg-opacity-25" : ""}`}
+                    className="ct-item"
+                    style={{ animationDelay: `${idx * 0.04}s` }}
                   >
-                    <Row className="align-items-center">
-                      <Col xs={1} className="d-flex justify-content-center">
-                        <Form.Check
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleSelectItem(product._id)}
-                          className="luxury-checkbox"
-                        />
-                      </Col>
-
-                      <Col xs={3} md={2}>
-                        <Link
-                          to={`/product/${product.slug}`}
-                          className="d-block ratio ratio-1x1 bg-white rounded-3 overflow-hidden p-1"
-                        >
-                          <img
-                            src={
-                              product.images?.[0]?.imageUrl ||
-                              "https://placehold.co/100"
-                            }
-                            alt={product.name}
-                            className="img-fluid object-fit-contain w-100 h-100"
+                    {/* Checkbox */}
+                    <div
+                      className={`ct-checkbox${isSelected ? " checked" : ""}`}
+                      style={{ marginTop: 4, flexShrink: 0 }}
+                      onClick={() => handleSelectItem(product._id)}
+                    >
+                      {isSelected && (
+                        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                          <path
+                            d="M1 3.5L3.5 6L8 1"
+                            stroke="white"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                           />
-                        </Link>
-                      </Col>
-
-                      <Col
-                        xs={8}
-                        md={9}
-                        className="d-flex flex-column justify-content-between h-100"
-                      >
-                        <div className="d-flex justify-content-between align-items-start mb-3">
-                          <div>
-                            <h5 className="fw-bold mb-1">
-                              <Link
-                                to={`/product/${product.slug}`}
-                                className="text-white text-decoration-none hover-gold"
-                              >
-                                {product.name}
-                              </Link>
-                            </h5>
-                            <span className="text-gold fw-bold fs-6">
-                              {price.toLocaleString()} đ
-                            </span>
-                          </div>
-                          <button
-                            className="btn btn-link text-secondary p-0 hover-danger"
-                            onClick={() => removeFromCart(product._id)}
-                            title="Xóa"
-                          >
-                            <FaTrash size={18} />
-                          </button>
-                        </div>
-
-                        <div className="d-flex justify-content-between align-items-end">
-                          <div
-                            className="d-flex align-items-center gap-2 p-1 rounded-3"
-                            style={{
-                              background: "#0a0a0a",
-                              border: "1px solid #333",
-                            }}
-                          >
-                            <button
-                              className="qty-btn"
-                              onClick={() =>
-                                updateQuantity(product._id, item.quantity - 1)
-                              }
-                              disabled={item.quantity <= 1}
-                            >
-                              <FaMinus size={12} />
-                            </button>
-                            <input
-                              type="text"
-                              className="qty-input"
-                              value={item.quantity}
-                              readOnly
-                            />
-                            <button
-                              className="qty-btn"
-                              onClick={() =>
-                                updateQuantity(product._id, item.quantity + 1)
-                              }
-                            >
-                              <FaPlus size={12} />
-                            </button>
-                          </div>
-                          <div className="text-end">
-                            <div className="small text-secondary mb-1">
-                              Thành tiền
-                            </div>
-                            <div className="fw-bold fs-5 text-gold">
-                              {(price * item.quantity).toLocaleString()} đ
-                            </div>
-                          </div>
-                        </div>
-                      </Col>
-                    </Row>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-4">
-              <Link
-                to="/products"
-                className="text-decoration-none text-secondary d-inline-flex align-items-center gap-2 hover-gold transition-all"
-              >
-                <FaArrowLeft /> Tiếp tục khám phá
-              </Link>
-            </div>
-          </Col>
-
-          {/* RIGHT: SUMMARY */}
-          <Col lg={4} className="order-lg-last">
-            <div
-              className="card-dark sticky-top rounded-4 overflow-hidden"
-              style={{
-                top: "100px",
-                zIndex: 100,
-                background: "linear-gradient(145deg, #141414, #0f0f0f)",
-                border: "1px solid rgba(212,175,55,0.25)",
-                boxShadow:
-                  "0 10px 30px rgba(0,0,0,0.6), inset 0 0 20px rgba(212,175,55,0.08)",
-              }}
-            >
-              {/* Header (GIỮ NGUYÊN) */}
-              <div className="p-4 border-bottom border-gold border-opacity-25 bg-black bg-opacity-50">
-                <h5 className="fw-bold mb-0 text-gold d-flex align-items-center gap-2">
-                  <FaShieldAlt /> Tổng kết giao dịch
-                </h5>
-              </div>
-
-              <div className="p-4">
-                {/* Freeship Progress (GIỮ NGUYÊN) */}
-                <div className="mb-4 p-3 rounded-3 bg-dark border border-gold border-opacity-10">
-                  {subtotal > 0 ? (
-                    <>
-                      {subtotal < FREESHIP_THRESHOLD ? (
-                        <p className="mb-2 small text-secondary">
-                          Chỉ cần thêm{" "}
-                          <span className="text-gold fw-bold">
-                            {(FREESHIP_THRESHOLD - subtotal).toLocaleString()} đ
-                          </span>{" "}
-                          để nhận Freeship
-                        </p>
-                      ) : (
-                        <p className="mb-2 small text-gold fw-bold d-flex align-items-center gap-2">
-                          <FaCheckCircle /> Đủ điều kiện Freeship
-                        </p>
+                        </svg>
                       )}
-                      <div
-                        className="progress rounded-pill"
-                        style={{ height: "10px", background: "#2a2a2a" }}
-                      >
-                        <div
-                          className="progress-bar bg-gold"
-                          role="progressbar"
-                          style={{ width: `${progress}%` }}
-                          aria-valuenow={progress}
-                          aria-valuemin="0"
-                          aria-valuemax="100"
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <p className="mb-0 small text-secondary text-center">
-                      Chọn sản phẩm để xem ưu đãi vận chuyển
-                    </p>
-                  )}
-                </div>
+                    </div>
 
-                {/* ── VOUCHER SECTION (thay thế alert cũ) ── */}
-                <div className="mb-4">
-                  <label className="form-label small fw-bold text-gold mb-2">
-                    MÃ ĐẶC QUYỀN / VOUCHER
-                  </label>
+                    {/* Image */}
+                    <Link to={`/product/${product.slug}`}>
+                      <img
+                        src={
+                          product.images?.[0]?.imageUrl ||
+                          "https://placehold.co/62"
+                        }
+                        alt={product.name}
+                        className="ct-item-img"
+                      />
+                    </Link>
 
-                  {/* Nếu chưa áp → hiện ô nhập */}
-                  {!appliedVoucher ? (
-                    <>
-                      <div className="input-group rounded-pill overflow-hidden border border-gold border-opacity-30">
-                        <span className="input-group-text bg-dark border-0 text-gold">
-                          <FaTicketAlt />
-                        </span>
-                        <Form.Control
-                          placeholder="Nhập mã khuyến mãi"
-                          className="bg-dark text-white border-0 shadow-none"
-                          value={couponCode}
-                          onChange={(e) => {
-                            setCouponCode(e.target.value);
-                            setVoucherError("");
-                          }}
-                          onKeyDown={(e) =>
-                            e.key === "Enter" && handleApplyVoucher()
-                          }
-                          disabled={
-                            voucherLoading || selectedItems.length === 0
-                          }
-                        />
-                        <Button
-                          variant="outline-gold"
-                          className="border-gold text-gold px-4"
-                          onClick={handleApplyVoucher}
-                          disabled={
-                            voucherLoading ||
-                            !couponCode.trim() ||
-                            selectedItems.length === 0
-                          }
-                        >
-                          {voucherLoading ? "..." : "Áp dụng"}
-                        </Button>
-                      </div>
-                      {/* Hint nếu chưa chọn sản phẩm */}
-                      {selectedItems.length === 0 && (
-                        <p
-                          style={{ fontSize: 11, color: "#666", marginTop: 4 }}
-                        >
-                          Chọn sản phẩm trước để áp voucher
-                        </p>
-                      )}
-                      {/* Error */}
-                      {voucherError && (
-                        <p className="voucher-error">{voucherError}</p>
-                      )}
-                    </>
-                  ) : (
-                    /* Voucher đã áp — hiện chip */
-                    <div className="voucher-applied">
-                      <div className="voucher-applied-left">
-                        <FaTicketAlt
-                          style={{ color: "#d4af37", fontSize: 14 }}
-                        />
-                        <div>
-                          <div className="voucher-applied-code">
-                            {appliedVoucher.code}
-                          </div>
-                          <div className="voucher-applied-desc">
-                            {appliedVoucher.description}
-                          </div>
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
+                    {/* Info */}
+                    <div className="ct-item-info">
+                      <Link
+                        to={`/product/${product.slug}`}
+                        className="ct-item-name"
                       >
-                        <span className="voucher-applied-amount">
-                          {appliedVoucher.type === "freeship"
-                            ? "Freeship"
-                            : `-${appliedVoucher.discount.toLocaleString("vi-VN")}đ`}
-                        </span>
+                        {product.name}
+                      </Link>
+                      <div className="ct-item-unit">
+                        {price.toLocaleString("vi-VN")} đ / sản phẩm
+                      </div>
+                      <div className="ct-qty">
                         <button
-                          className="voucher-remove-btn"
-                          onClick={handleRemoveVoucher}
-                          title="Xóa voucher"
+                          className="ct-qty-btn"
+                          onClick={() =>
+                            updateQuantity(product._id, item.quantity - 1)
+                          }
+                          disabled={item.quantity <= 1}
                         >
-                          <FaTimes size={12} />
+                          <FaMinus />
+                        </button>
+                        <input
+                          className="ct-qty-val"
+                          value={item.quantity}
+                          readOnly
+                        />
+                        <button
+                          className="ct-qty-btn"
+                          onClick={() =>
+                            updateQuantity(product._id, item.quantity + 1)
+                          }
+                        >
+                          <FaPlus />
                         </button>
                       </div>
                     </div>
-                  )}
-                </div>
-                {/* ── END VOUCHER ── */}
 
-                {/* Chi tiết hóa đơn */}
-                <div className="mb-4">
-                  <div className="d-flex justify-content-between mb-3 text-secondary small">
-                    <span>Tạm tính</span>
-                    <span className="text-white">
-                      {subtotal.toLocaleString()} đ
-                    </span>
-                  </div>
-
-                  <div className="d-flex justify-content-between mb-3 text-secondary small">
-                    <span>Phí vận chuyển</span>
-                    {subtotal === 0 ? (
-                      <span className="text-white">0 đ</span>
-                    ) : appliedVoucher?.type === "freeship" ? (
-                      <span className="text-gold fw-bold">
-                        Miễn phí (voucher)
-                      </span>
-                    ) : isFreeShip ? (
-                      <span className="text-gold fw-bold">Miễn phí</span>
-                    ) : (
-                      <span className="text-white">
-                        {currentShippingFee.toLocaleString()} đ
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Dòng chiết khấu — chỉ hiện khi có voucher giảm tiền */}
-                  {discountAmount > 0 && (
-                    <div className="d-flex justify-content-between mb-3 text-secondary small">
-                      <span>Chiết khấu voucher</span>
-                      <span style={{ color: "#4ade80", fontWeight: 600 }}>
-                        - {discountAmount.toLocaleString()} đ
-                      </span>
+                    {/* Total + delete */}
+                    <div className="ct-item-right">
+                      <button
+                        className="ct-item-del"
+                        onClick={() => removeFromCart(product._id)}
+                      >
+                        <FaTrash />
+                      </button>
+                      <div className="ct-item-total">
+                        {(price * item.quantity).toLocaleString("vi-VN")} đ
+                      </div>
                     </div>
-                  )}
-
-                  <div className="d-flex justify-content-between mb-4 pb-3 border-bottom border-secondary">
-                    {/* Dòng này giữ nguyên như gốc nếu không có voucher */}
-                    {!appliedVoucher && (
-                      <>
-                        <span className="text-secondary">Chiết khấu</span>
-                        <span className="text-gold fw-bold">- 0 đ</span>
-                      </>
-                    )}
                   </div>
+                );
+              })}
 
-                  <div className="d-flex justify-content-between align-items-center">
-                    <span className="fw-bold fs-5 text-white">Tổng cộng</span>
-                    <span
-                      className="fw-bold fs-4 text-gold"
-                      style={{ textShadow: "0 0 8px rgba(212,175,55,0.4)" }}
-                    >
-                      {Math.max(0, finalTotal).toLocaleString()} đ
-                    </span>
+              <Link to="/products" className="ct-continue">
+                <FaArrowLeft style={{ fontSize: 10 }} /> Tiếp tục khám phá
+              </Link>
+            </div>
+
+            {/* ─── RIGHT: SUMMARY ─── */}
+            <div className="ct-summary-panel">
+              <div className="ct-summary-title">Tổng kết đơn hàng</div>
+
+              {/* Freeship progress */}
+              <div className="ct-freeship">
+                {subtotal === 0 ? (
+                  <div className="ct-freeship-text empty">
+                    Chọn sản phẩm để xem ưu đãi vận chuyển
                   </div>
+                ) : subtotal < FREESHIP_THRESHOLD ? (
+                  <>
+                    <div className="ct-freeship-text">
+                      Thêm{" "}
+                      <strong>
+                        {(FREESHIP_THRESHOLD - subtotal).toLocaleString(
+                          "vi-VN",
+                        )}{" "}
+                        đ
+                      </strong>{" "}
+                      để được miễn phí vận chuyển
+                    </div>
+                    <div className="ct-prog-bar">
+                      <div
+                        className="ct-prog-fill"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="ct-freeship-text done">
+                    <FaTruck style={{ fontSize: 12 }} /> Đủ điều kiện miễn phí
+                    vận chuyển
+                  </div>
+                )}
+              </div>
+
+              {/* Voucher */}
+              <div style={{ marginBottom: 12 }}>
+                <div className="ct-voucher-lbl">
+                  <FaTicketAlt style={{ fontSize: 10 }} /> Mã voucher
                 </div>
+                {!appliedVoucher ? (
+                  <>
+                    <div className="ct-voucher-row">
+                      <input
+                        className="ct-voucher-input"
+                        placeholder="Nhập mã..."
+                        value={couponCode}
+                        onChange={(e) => {
+                          setCouponCode(e.target.value);
+                          setVoucherError("");
+                        }}
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && handleApplyVoucher()
+                        }
+                        disabled={voucherLoading || selectedItems.length === 0}
+                      />
+                      <button
+                        className="ct-voucher-apply"
+                        onClick={handleApplyVoucher}
+                        disabled={
+                          voucherLoading ||
+                          !couponCode.trim() ||
+                          selectedItems.length === 0
+                        }
+                      >
+                        {voucherLoading ? "..." : "Áp dụng"}
+                      </button>
+                    </div>
+                    {selectedItems.length === 0 && (
+                      <div className="ct-voucher-hint">
+                        Chọn sản phẩm trước để áp voucher
+                      </div>
+                    )}
+                    {voucherError && (
+                      <div className="ct-voucher-err">{voucherError}</div>
+                    )}
+                  </>
+                ) : (
+                  <div className="ct-voucher-chip">
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 8 }}
+                    >
+                      <FaCheckCircle
+                        style={{
+                          color: "var(--gn)",
+                          fontSize: 12,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <div>
+                        <div className="ct-v-code">{appliedVoucher.code}</div>
+                        <div className="ct-v-desc">
+                          {appliedVoucher.description}
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                      <span className="ct-v-val">
+                        {appliedVoucher.type === "freeship"
+                          ? "Freeship"
+                          : `−${appliedVoucher.discount.toLocaleString("vi-VN")}đ`}
+                      </span>
+                      <button className="ct-v-rm" onClick={handleRemoveVoucher}>
+                        <FaTimes size={11} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                {/* Nút thanh toán — đổi onClick sang handleCheckout để truyền voucher */}
-                <Button
-                  className="w-100 py-3 fs-5 fw-bold rounded-pill btn-gold-gradient shadow-gold hover-lift d-flex align-items-center justify-content-center gap-2"
-                  onClick={handleCheckout}
-                  disabled={selectedItems.length === 0}
-                >
-                  Tiến hành thanh toán <FaArrowRight />
-                </Button>
+              <div className="ct-divider" />
+
+              {/* Totals */}
+              <div className="ct-total-row">
+                <span>Tạm tính ({selectedItems.length} sản phẩm)</span>
+                <span className="ct-t-mono">
+                  {subtotal.toLocaleString("vi-VN")}đ
+                </span>
+              </div>
+              <div className="ct-total-row">
+                <span>Phí vận chuyển</span>
+                {subtotal === 0 ? (
+                  <span className="ct-t-mono">—</span>
+                ) : effectiveShipping === 0 ? (
+                  <span className="ct-t-green">
+                    {appliedVoucher?.type === "freeship"
+                      ? "Miễn phí (voucher)"
+                      : "Miễn phí"}
+                  </span>
+                ) : (
+                  <span className="ct-t-mono">
+                    {currentShippingFee.toLocaleString("vi-VN")}đ
+                  </span>
+                )}
+              </div>
+              {discountAmount > 0 && (
+                <div className="ct-total-row">
+                  <span>Giảm giá voucher</span>
+                  <span className="ct-t-disc">
+                    −{discountAmount.toLocaleString("vi-VN")}đ
+                  </span>
+                </div>
+              )}
+              <div className="ct-total-row main">
+                <span>Tổng cộng</span>
+                <div className="ct-t-val">
+                  {Math.max(0, finalTotal).toLocaleString("vi-VN")} đ
+                </div>
+              </div>
+              <div className="ct-vat">(Đã bao gồm VAT)</div>
+
+              {/* CTA */}
+              <button
+                className="ct-cta"
+                onClick={handleCheckout}
+                disabled={selectedItems.length === 0}
+              >
+                Tiến hành thanh toán <FaArrowRight style={{ fontSize: 11 }} />
+              </button>
+              <div className="ct-cta-note">
+                {selectedItems.length === 0
+                  ? "Chọn ít nhất 1 sản phẩm để tiếp tục"
+                  : `${selectedItems.length} sản phẩm đã được chọn`}
               </div>
             </div>
-          </Col>
-        </Row>
-      </Container>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

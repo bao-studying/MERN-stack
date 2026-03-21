@@ -154,7 +154,7 @@ const AddressList = () => {
   }
 
   return (
-    <div className="profile-content-card animate-fade-in">
+    <div className="  animate-fade-in">
       <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
         <h4 className="fw-bold mb-0 text-success"><FaMapMarkerAlt className="me-2"/>Sổ địa chỉ</h4>
         <Button variant="success" size="sm" className="rounded-pill px-3 shadow-sm fw-bold" onClick={handleAdd}>

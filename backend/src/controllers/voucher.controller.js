@@ -269,6 +269,7 @@ export const validateVoucher = async (req, res, next) => {
         description: v.description,
         type: v.type,
         value: v.value,
+        minOrder: v.minOrder,
       },
       discount,
       finalAmount: Math.max(0, orderAmount - discount),

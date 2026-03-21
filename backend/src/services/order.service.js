@@ -15,14 +15,27 @@ export const createOrderService = async (userId, orderData) => {
   }
 
   // ── Lấy voucherId từ orderData TRƯỚC khi dùng ──────────────
-  const { voucherId, discountAmount = 0 } = orderData;
+  const { voucherId, discountAmount = 0, selectedProductIds = [] } = orderData;
   // ────────────────────────────────────────────────────────────
+
+  const selectedIdSet = new Set(
+    Array.isArray(selectedProductIds)
+      ? selectedProductIds.map((id) => id.toString())
+      : [],
+  );
+  const checkoutItems =
+    selectedIdSet.size > 0
+      ? cart.items.filter((item) => selectedIdSet.has(item.productId.toString()))
+      : cart.items;
+  if (checkoutItems.length === 0) {
+    throw new Error("Không có sản phẩm hợp lệ để thanh toán");
+  }
 
   let totalAmount_cents = 0;
   const orderItems = [];
 
   // 2. Duyệt qua từng sản phẩm để check tồn kho và tính tiền
-  for (const item of cart.items) {
+  for (const item of checkoutItems) {
     const product = await Product.findById(item.productId);
     if (!product) throw new Error(`Sản phẩm không tồn tại: ${item.productId}`);
 
@@ -83,8 +96,14 @@ export const createOrderService = async (userId, orderData) => {
     }),
   });
 
-  // 5. Xóa giỏ hàng
-  cart.items = [];
+  // 5. Xóa đúng sản phẩm đã thanh toán khỏi giỏ
+  if (selectedIdSet.size > 0) {
+    cart.items = cart.items.filter(
+      (item) => !selectedIdSet.has(item.productId.toString()),
+    );
+  } else {
+    cart.items = [];
+  }
   await cart.save();
 
   // ── Đánh dấu voucher đã dùng SAU KHI lưu order thành công ──

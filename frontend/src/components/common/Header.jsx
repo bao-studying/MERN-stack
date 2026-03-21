@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Navbar,
   Container,
@@ -20,11 +20,20 @@ import {
   FaSignOutAlt,
   FaBoxOpen,
   FaGem,
+  FaBell,
+  FaCommentDots,
+  FaTag,
 } from "react-icons/fa";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useCart } from "../../hooks/useCart";
+import orderApi from "../../services/order.service";
+import axiosClient from "../../services/axiosClient";
 import { IoFootball } from "react-icons/io5"; // IoFootball có hình dạng rất giống Poké Ball
+
+const CHAT_UNREAD_STORAGE_KEY = "header_chat_unread";
+const CHAT_UNREAD_EVENT = "header-chat-unread-changed";
+const HEADER_READ_NOTI_KEY_PREFIX = "header_read_notifications_";
 
 const Header = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -39,6 +48,145 @@ const Header = () => {
 
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [notifications, setNotifications] = useState([]);
+  const [chatUnread, setChatUnread] = useState(0);
+  const [readNotificationIds, setReadNotificationIds] = useState([]);
+
+  const readStorageKey = `${HEADER_READ_NOTI_KEY_PREFIX}${user?._id || "guest"}`;
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setReadNotificationIds([]);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(readStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      setReadNotificationIds(Array.isArray(parsed) ? parsed : []);
+    } catch (error) {
+      setReadNotificationIds([]);
+    }
+  }, [isLoggedIn, readStorageKey]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setNotifications([]);
+      setChatUnread(0);
+      return;
+    }
+
+    let cancelled = false;
+    const fetchNotifications = async () => {
+      try {
+        const [ordersRes, voucherRes] = await Promise.all([
+          orderApi.getMyOrders(),
+          axiosClient.get("/vouchers/my"),
+        ]);
+        if (cancelled) return;
+
+        const orderNotis = (ordersRes?.data || [])
+          .slice(0, 5)
+          .map((order) => ({
+            id: `order-${order._id}`,
+            type: "order",
+            title: `Đơn #${order.orderNumber || order._id?.slice(-6)} - ${order.status || "pending"}`,
+            desc: `Tổng: ${(order.totalAmount_cents || 0).toLocaleString("vi-VN")}đ`,
+            link: "/profile?tab=orders",
+            ts: new Date(order.updatedAt || order.createdAt || Date.now()).getTime(),
+          }));
+
+        const voucherNotis = (voucherRes?.active || []).slice(0, 5).map((v) => ({
+          id: `voucher-${v._id}`,
+          type: "voucher",
+          title: `Voucher mới: ${v.code}`,
+          desc: v.description || "Bạn có voucher mới khả dụng",
+          link: "/offers",
+          ts: new Date(v.updatedAt || v.createdAt || Date.now()).getTime(),
+        }));
+
+        setNotifications([...orderNotis, ...voucherNotis]);
+      } catch (error) {
+        if (!cancelled) setNotifications([]);
+      }
+    };
+
+    fetchNotifications();
+    const timer = setInterval(fetchNotifications, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [isLoggedIn, user?._id]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const syncChatUnread = () => {
+      const count = Number(localStorage.getItem(CHAT_UNREAD_STORAGE_KEY));
+      setChatUnread(Number.isFinite(count) && count > 0 ? count : 0);
+    };
+
+    syncChatUnread();
+    const onCustomUnread = (event) => {
+      const next = Number(event?.detail?.count);
+      if (Number.isFinite(next)) {
+        setChatUnread(next > 0 ? next : 0);
+      } else {
+        syncChatUnread();
+      }
+    };
+
+    window.addEventListener(CHAT_UNREAD_EVENT, onCustomUnread);
+    window.addEventListener("storage", syncChatUnread);
+    return () => {
+      window.removeEventListener(CHAT_UNREAD_EVENT, onCustomUnread);
+      window.removeEventListener("storage", syncChatUnread);
+    };
+  }, [isLoggedIn]);
+
+  const mergedNotifications = useMemo(() => {
+    const chatNoti = chatUnread
+      ? [
+          {
+            id: "chat-unread",
+            type: "message",
+            title: `${chatUnread} tin nhắn mới`,
+            desc: "Bạn có tin nhắn chưa đọc từ hỗ trợ",
+            link: "#chat",
+            ts: Date.now(),
+          },
+        ]
+      : [];
+    return [...chatNoti, ...notifications].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  }, [chatUnread, notifications]);
+
+  const unreadCount = useMemo(() => {
+    return mergedNotifications.reduce((count, item) => {
+      if (item.id === "chat-unread") return count + 1;
+      return readNotificationIds.includes(item.id) ? count : count + 1;
+    }, 0);
+  }, [mergedNotifications, readNotificationIds]);
+
+  const handleClickNotification = (noti) => {
+    if (noti.id === "chat-unread") {
+      localStorage.setItem(CHAT_UNREAD_STORAGE_KEY, "0");
+      window.dispatchEvent(
+        new CustomEvent(CHAT_UNREAD_EVENT, { detail: { count: 0 } }),
+      );
+      setChatUnread(0);
+    } else if (!readNotificationIds.includes(noti.id)) {
+      const nextReadIds = [noti.id, ...readNotificationIds].slice(0, 200);
+      setReadNotificationIds(nextReadIds);
+      localStorage.setItem(readStorageKey, JSON.stringify(nextReadIds));
+    }
+
+    const link = noti.link;
+    if (link === "#chat") {
+      window.dispatchEvent(new Event("open-floating-chat"));
+      return;
+    }
+    if (link) navigate(link);
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -209,8 +357,10 @@ const Header = () => {
                     to={link.path}
                     className={({ isActive }) =>
                       isActive
-                        ? "text-gold text-decoration-none fw-bold border-bottom border-gold pb-1"
-                        : "text-white text-decoration-none opacity-75 hover-gold pb-1 transition-all"
+                        ? // Khi đang active: Chữ đen, đậm, có gạch chân đen
+                          "text-gold text-decoration-none fw-bold border-bottom border-gold pb-1"
+                        : // Khi bình thường: Chữ đen (mặc định hoặc text-dark), bỏ opacity trắng
+                          "text-dark text-decoration-none hover-gold pb-1 transition-all"
                     }
                   >
                     {link.label}
@@ -225,6 +375,96 @@ const Header = () => {
 
               {/* USER & CART */}
               <div className="d-flex align-items-center gap-3">
+                {isLoggedIn && (
+                  <Dropdown align="end">
+                    <Dropdown.Toggle
+                      variant="transparent"
+                      className="p-0 border-0 after-none"
+                    >
+                      <div
+                        className="position-relative d-flex align-items-center justify-content-center text-gold"
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: "50%",
+                          border: "1px solid rgba(212,175,55,0.3)",
+                        }}
+                      >
+                        <FaBell size={16} />
+                        {unreadCount > 0 && (
+                          <Badge
+                            bg="danger"
+                            pill
+                            className="position-absolute top-0 start-100 translate-middle"
+                          >
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </Badge>
+                        )}
+                      </div>
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu
+                      className="border-0 shadow-lg p-2 mt-3"
+                      style={{
+                        minWidth: "320px",
+                        backgroundColor: "#141414",
+                        border: "1px solid #2a2a2a",
+                        maxHeight: "360px",
+                        overflowY: "auto",
+                      }}
+                    >
+                      <div className="px-2 pb-2 text-gold fw-bold border-bottom border-secondary">
+                        Thông báo
+                      </div>
+                      {mergedNotifications.length === 0 ? (
+                        <div className="px-2 py-3 text-muted small">
+                          Chưa có thông báo mới
+                        </div>
+                      ) : (
+                        mergedNotifications.slice(0, 8).map((noti) => (
+                          <Dropdown.Item
+                            key={noti.id}
+                            onClick={() => handleClickNotification(noti)}
+                            className="text-white py-2 hover-dark-gold"
+                          >
+                            <div className="d-flex gap-2">
+                              <div className="pt-1">
+                                {noti.type === "order" && (
+                                  <FaBoxOpen className="text-gold" />
+                                )}
+                                {noti.type === "voucher" && (
+                                  <FaTag className="text-warning" />
+                                )}
+                                {noti.type === "message" && (
+                                  <FaCommentDots className="text-info" />
+                                )}
+                              </div>
+                              <div className="flex-grow-1">
+                                <div className="fw-semibold small">
+                                  {noti.title}
+                                </div>
+                                <div className="text-muted small">{noti.desc}</div>
+                              </div>
+                              {noti.id !== "chat-unread" &&
+                                !readNotificationIds.includes(noti.id) && (
+                                  <span
+                                    style={{
+                                      width: 8,
+                                      height: 8,
+                                      borderRadius: "50%",
+                                      background: "#dc2626",
+                                      marginTop: 6,
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                )}
+                            </div>
+                          </Dropdown.Item>
+                        ))
+                      )}
+                    </Dropdown.Menu>
+                  </Dropdown>
+                )}
+
                 <Link
                   to="/cart"
                   className="position-relative d-flex align-items-center justify-content-center text-gold cart-hover"
