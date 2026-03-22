@@ -14,6 +14,7 @@ export const getAllUsers = async (req, res, next) => {
       search = "",
       status = "All",
       roles = "",
+      sort = "newest",
     } = req.query;
 
     const { users, count } = await userService.findUsers({
@@ -22,6 +23,7 @@ export const getAllUsers = async (req, res, next) => {
       search,
       status,
       roles, // ← truyền xuống service
+      sort,
     });
 
     res.json({

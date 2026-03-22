@@ -6,17 +6,12 @@ import sendEmail from "../utils/sendEmail.js";
 import { orderConfirmationTemplate } from "../utils/emailTemplates.js";
 import { markVoucherUsed } from "../controllers/voucher.controller.js";
 
-// --- CLIENT: TẠO ĐƠN HÀNG ---
+// --- CLIENT: TẠO ĐƠN HÀNG (GIỮ NGUYÊN) ---
 export const createOrderService = async (userId, orderData) => {
-  // 1. Lấy giỏ hàng
   const cart = await Cart.findOne({ userId });
-  if (!cart || cart.items.length === 0) {
-    throw new Error("Giỏ hàng trống");
-  }
+  if (!cart || cart.items.length === 0) throw new Error("Giỏ hàng trống");
 
-  // ── Lấy voucherId từ orderData TRƯỚC khi dùng ──────────────
   const { voucherId, discountAmount = 0, selectedProductIds = [] } = orderData;
-  // ────────────────────────────────────────────────────────────
 
   const selectedIdSet = new Set(
     Array.isArray(selectedProductIds)
@@ -25,33 +20,28 @@ export const createOrderService = async (userId, orderData) => {
   );
   const checkoutItems =
     selectedIdSet.size > 0
-      ? cart.items.filter((item) => selectedIdSet.has(item.productId.toString()))
+      ? cart.items.filter((item) =>
+          selectedIdSet.has(item.productId.toString()),
+        )
       : cart.items;
-  if (checkoutItems.length === 0) {
+  if (checkoutItems.length === 0)
     throw new Error("Không có sản phẩm hợp lệ để thanh toán");
-  }
 
   let totalAmount_cents = 0;
   const orderItems = [];
 
-  // 2. Duyệt qua từng sản phẩm để check tồn kho và tính tiền
   for (const item of checkoutItems) {
     const product = await Product.findById(item.productId);
     if (!product) throw new Error(`Sản phẩm không tồn tại: ${item.productId}`);
-
     const variant = product.variants?.[0];
     if (!variant)
       throw new Error(
         `Sản phẩm ${product.name} lỗi dữ liệu (không có variant)`,
       );
-
-    if (variant.stock < item.quantity) {
+    if (variant.stock < item.quantity)
       throw new Error(`Sản phẩm ${product.name} đã hết hàng`);
-    }
-
     variant.stock -= item.quantity;
     await product.save();
-
     orderItems.push({
       productId: product._id,
       name: product.name,
@@ -59,25 +49,16 @@ export const createOrderService = async (userId, orderData) => {
       image: product.images?.[0]?.imageUrl || "",
       quantity: item.quantity,
     });
-
     totalAmount_cents += variant.price_cents * item.quantity;
   }
 
-  // 3. Tính phí ship
   const SHIPPING_FEE = 30000;
   const FREESHIP_THRESHOLD = 300000;
   let finalTotal = totalAmount_cents;
-  if (totalAmount_cents < FREESHIP_THRESHOLD) {
-    finalTotal += SHIPPING_FEE;
-  }
-
-  // ── Áp discount voucher (trừ SAU khi đã cộng ship) ─────────
-  if (discountAmount > 0) {
+  if (totalAmount_cents < FREESHIP_THRESHOLD) finalTotal += SHIPPING_FEE;
+  if (discountAmount > 0)
     finalTotal = Math.max(0, finalTotal - Number(discountAmount));
-  }
-  // ────────────────────────────────────────────────────────────
 
-  // 4. Tạo Order
   const newOrder = await Order.create({
     userId,
     orderNumber: `ORD-${Date.now()}`,
@@ -88,7 +69,6 @@ export const createOrderService = async (userId, orderData) => {
     note: orderData.note,
     paymentMethod: orderData.paymentMethod || "COD",
     status: "pending",
-    // ── Lưu lại thông tin voucher đã dùng (tuỳ chọn) ──────
     ...(voucherId && {
       voucherId,
       voucherCode: orderData.voucherCode || "",
@@ -96,7 +76,6 @@ export const createOrderService = async (userId, orderData) => {
     }),
   });
 
-  // 5. Xóa đúng sản phẩm đã thanh toán khỏi giỏ
   if (selectedIdSet.size > 0) {
     cart.items = cart.items.filter(
       (item) => !selectedIdSet.has(item.productId.toString()),
@@ -106,52 +85,53 @@ export const createOrderService = async (userId, orderData) => {
   }
   await cart.save();
 
-  // ── Đánh dấu voucher đã dùng SAU KHI lưu order thành công ──
   if (voucherId) {
     await markVoucherUsed(voucherId, userId).catch((err) =>
-      console.error(
-        "⚠️ markVoucherUsed lỗi (không ảnh hưởng đơn):",
-        err.message,
-      ),
+      console.error("⚠️ markVoucherUsed lỗi:", err.message),
     );
   }
-  // ────────────────────────────────────────────────────────────
 
-  // 6. Gửi email xác nhận (non-blocking)
   const user = await User.findById(userId);
-  if (user && user.email) {
+  if (user?.email) {
     sendEmail({
       email: user.email,
       subject: `Xác nhận đơn hàng #${newOrder.orderNumber} - EcoStore`,
       html: orderConfirmationTemplate(newOrder, user.name || "Khách hàng"),
-    }).catch((err) =>
-      console.error(
-        "⚠️ Lỗi gửi mail ngầm (Không ảnh hưởng đơn hàng):",
-        err.message,
-      ),
-    );
+    }).catch((err) => console.error("⚠️ Lỗi gửi mail:", err.message));
   }
 
   return newOrder;
 };
 
-// --- CLIENT: LẤY ĐƠN HÀNG CỦA TÔI ---
+// --- CLIENT: LẤY ĐƠN HÀNG CỦA TÔI (GIỮ NGUYÊN) ---
 export const getMyOrdersService = async (userId) => {
   return await Order.find({ userId }).sort({ createdAt: -1 });
 };
 
-// --- ADMIN: LẤY TẤT CẢ ĐƠN HÀNG ---
+// ─────────────────────────────────────────────────────────────
+// --- ADMIN: LẤY TẤT CẢ ĐƠN HÀNG
+// THÊM MỚI: nhận query.userId để lọc đơn của 1 khách hàng cụ thể
+// ─────────────────────────────────────────────────────────────
 export const getAllOrdersService = async (query) => {
   const filter = {};
+
+  // Filter theo trạng thái (giữ nguyên)
   if (query.status && query.status !== "all") {
     filter.status = query.status;
   }
+
+  // ── THÊM MỚI: filter theo userId ──
+  // Dùng khi admin xem hồ sơ 1 khách hàng cụ thể
+  if (query.userId) {
+    filter.userId = query.userId;
+  }
+
   return await Order.find(filter)
     .populate("userId", "name email")
     .sort({ createdAt: -1 });
 };
 
-// --- ADMIN: CẬP NHẬT TRẠNG THÁI ---
+// --- ADMIN: CẬP NHẬT TRẠNG THÁI (GIỮ NGUYÊN) ---
 export const updateOrderStatusService = async (orderId, status) => {
   const order = await Order.findByIdAndUpdate(
     orderId,
@@ -160,4 +140,22 @@ export const updateOrderStatusService = async (orderId, status) => {
   );
   if (!order) throw new Error("Order not found");
   return order;
+};
+
+// ─────────────────────────────────────────────────────────────
+// THÊM MỚI: Tổng chi tiêu 1 user — dùng cho sort "spending"
+// Chỉ tính đơn status = "delivered"
+// ─────────────────────────────────────────────────────────────
+export const getUserSpendingService = async (userId) => {
+  const result = await Order.aggregate([
+    { $match: { userId: userId, status: "delivered" } },
+    {
+      $group: {
+        _id: "$userId",
+        totalSpend: { $sum: "$totalAmount_cents" },
+        orderCount: { $sum: 1 },
+      },
+    },
+  ]);
+  return result[0] || { totalSpend: 0, orderCount: 0 };
 };

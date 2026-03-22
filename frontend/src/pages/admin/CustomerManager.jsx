@@ -481,6 +481,7 @@ const CustomerManager = () => {
           search: searchTerm,
           status: filterStatus,
           roles: isStaffView ? STAFF_ROLES.join(",") : CUSTOMER_ROLES.join(","),
+          sort: searchParams.get("sort") || "newest",
         },
       });
       setUsers(res.users);
@@ -491,7 +492,13 @@ const CustomerManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchTerm, filterStatus, accountType]);
+  }, [
+    currentPage,
+    searchTerm,
+    filterStatus,
+    accountType,
+    searchParams.get("sort"),
+  ]);
 
   useEffect(() => {
     const t = setTimeout(() => fetchUsers(), 500);
@@ -579,8 +586,8 @@ const CustomerManager = () => {
 
       {/* FILTER BAR */}
       <div className="table-card p-3 mb-4">
-        <Row className="g-3">
-          <Col md={5}>
+        <Row className="g-3 mb-3">
+          <Col md={6}>
             <InputGroup>
               <InputGroup.Text className="bg-white border-end-0">
                 <FaSearch className="text-muted" />
@@ -605,15 +612,81 @@ const CustomerManager = () => {
               <option value="Locked">Bị khóa</option>
             </Form.Select>
           </Col>
-          <Col md={2}>
-            <Button
-              variant="outline-secondary"
-              className="w-100 d-flex align-items-center justify-content-center gap-2"
+          <Col md={3}>
+            <Form.Select
+              className="shadow-none"
+              value={searchParams.get("sort") || "newest"}
+              onChange={(e) => {
+                const p = new URLSearchParams(searchParams);
+                p.set("sort", e.target.value);
+                p.set("page", 1);
+                setSearchParams(p);
+              }}
             >
-              <FaFilter /> Lọc nhóm
-            </Button>
+              <option value="newest">Mới nhất</option>
+              <option value="oldest">Lâu năm nhất</option>
+              <option value="spending_desc">Chi tiêu nhiều nhất ↓</option>
+              <option value="spending_asc">Chi tiêu ít nhất ↑</option>
+              <option value="orders_desc">Nhiều đơn hàng nhất</option>
+              <option value="name_asc">Tên A → Z</option>
+            </Form.Select>
           </Col>
         </Row>
+
+        {/* Sort chips — nhóm nhanh */}
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: "#a09890",
+              textTransform: "uppercase",
+              letterSpacing: ".4px",
+              marginRight: 2,
+            }}
+          >
+            Lọc nhanh:
+          </span>
+          {[
+            { val: "spending_desc", label: "💰 Chi tiêu nhiều nhất" },
+            { val: "oldest", label: "🏅 Lâu năm nhất" },
+            { val: "orders_desc", label: "📦 Nhiều đơn nhất" },
+            { val: "newest", label: "🆕 Mới nhất" },
+          ].map((chip) => {
+            const active = (searchParams.get("sort") || "newest") === chip.val;
+            return (
+              <button
+                key={chip.val}
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: 20,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  border: active ? "none" : "0.5px solid #e2ded6",
+                  background: active ? "#1c1917" : "transparent",
+                  color: active ? "#fff" : "#6b6560",
+                  transition: ".12s",
+                }}
+                onClick={() => {
+                  const p = new URLSearchParams(searchParams);
+                  p.set("sort", chip.val);
+                  p.set("page", 1);
+                  setSearchParams(p);
+                }}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* TABLE */}
@@ -625,6 +698,7 @@ const CustomerManager = () => {
               <th>Liên Hệ</th>
               <th>Vai Trò</th>
               <th className="text-center">Ngày Tham Gia</th>
+              {!isStaffView && <th className="text-end">Tổng Chi Tiêu</th>}
               <th>Trạng Thái</th>
               <th className="text-end pe-4">Hành Động</th>
             </tr>
@@ -632,7 +706,7 @@ const CustomerManager = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="6" className="text-center py-5">
+                <td colSpan={isStaffView ? 6 : 7} className="text-center py-5">
                   <Spinner animation="border" variant="success" />
                 </td>
               </tr>
@@ -686,6 +760,45 @@ const CustomerManager = () => {
                   <td className="text-center">
                     {new Date(user.createdAt).toLocaleDateString("vi-VN")}
                   </td>
+                  {!isStaffView && (
+                    <td className="text-end">
+                      <span
+                        style={{
+                          fontFamily: "var(--bs-font-monospace)",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: user.totalSpend > 0 ? "#15803d" : "#a09890",
+                        }}
+                      >
+                        {user.totalSpend != null
+                          ? `${user.totalSpend.toLocaleString("vi-VN")}đ`
+                          : "—"}
+                      </span>
+                      {user.totalSpend >= 50000000 && (
+                        <div
+                          style={{
+                            fontSize: 9,
+                            color: "#b45309",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ⭐ VIP
+                        </div>
+                      )}
+                      {user.totalSpend >= 1000000 &&
+                        user.totalSpend < 5000000 && (
+                          <div
+                            style={{
+                              fontSize: 9,
+                              color: "#15803d",
+                              fontWeight: 700,
+                            }}
+                          >
+                            ✓ Thân thiết
+                          </div>
+                        )}
+                    </td>
+                  )}
                   <td>
                     {user.status === 1 ? (
                       <Badge
@@ -753,7 +866,10 @@ const CustomerManager = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="text-center py-5 text-muted">
+                <td
+                  colSpan={isStaffView ? 6 : 7}
+                  className="text-center py-5 text-muted"
+                >
                   Không tìm thấy {isStaffView ? "nhân viên" : "khách hàng"} nào.
                 </td>
               </tr>

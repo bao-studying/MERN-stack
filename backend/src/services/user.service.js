@@ -10,12 +10,13 @@ export const findUsers = async ({
   search,
   status,
   roles = "",
+  sort = "newest",
 }) => {
-  const query = {};
+  const matchStage = {};
 
   // 1. Tìm kiếm theo tên / email / phone
   if (search) {
-    query.$or = [
+    matchStage.$or = [
       { name: { $regex: search, $options: "i" } },
       { email: { $regex: search, $options: "i" } },
       { phone: { $regex: search, $options: "i" } },
@@ -24,33 +25,104 @@ export const findUsers = async ({
 
   // 2. Lọc theo trạng thái
   if (status !== "All") {
-    query.status = status === "Active" ? 1 : 0;
+    matchStage.status = status === "Active" ? 1 : 0;
   }
 
-  // 3. ← NEW: Lọc theo danh sách role names
-  //    Frontend gửi: roles="customer" hoặc roles="admin,manager,staff"
+  // 3. Lọc theo role names
   if (roles) {
     const roleNames = roles
       .split(",")
       .map((r) => r.trim())
       .filter(Boolean);
     if (roleNames.length > 0) {
-      // Tìm các Role document có name nằm trong danh sách
       const roleDocs = await Role.find({ name: { $in: roleNames } }).select(
         "_id",
       );
       const roleIds = roleDocs.map((r) => r._id);
-      query.role = { $in: roleIds };
+      matchStage.role = { $in: roleIds };
     }
   }
 
-  const users = await User.find(query)
-    .populate("role", "name")
-    .limit(limit)
-    .skip((page - 1) * limit)
-    .sort({ createdAt: -1 });
+  // 4. Sort stage — map sort key → MongoDB sort
+  const SORT_MAP = {
+    newest: { createdAt: -1 },
+    oldest: { createdAt: 1 },
+    spending_desc: { totalSpend: -1 },
+    spending_asc: { totalSpend: 1 },
+    orders_desc: { orderCount: -1 },
+    name_asc: { name: 1 },
+  };
+  const sortStage = SORT_MAP[sort] || { createdAt: -1 };
 
-  const count = await User.countDocuments(query);
+  // 5. Aggregate: match → lookup Orders → tính totalSpend (chỉ đơn delivered) + orderCount → sort → paginate
+  const pipeline = [
+    { $match: matchStage },
+
+    // Join với collection orders
+    {
+      $lookup: {
+        from: "orders",
+        localField: "_id",
+        foreignField: "userId",
+        as: "orders",
+      },
+    },
+
+    // Tính totalSpend (chỉ đơn delivered) và orderCount (tất cả đơn)
+    {
+      $addFields: {
+        totalSpend: {
+          $sum: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$orders",
+                  as: "o",
+                  cond: { $eq: ["$$o.status", "delivered"] },
+                },
+              },
+              as: "o",
+              in: "$$o.totalAmount_cents",
+            },
+          },
+        },
+        orderCount: { $size: "$orders" },
+      },
+    },
+
+    // Bỏ mảng orders thô (nặng, không cần trả về)
+    { $unset: "orders" },
+
+    // Populate role — lookup Role collection
+    {
+      $lookup: {
+        from: "roles",
+        localField: "role",
+        foreignField: "_id",
+        as: "roleData",
+      },
+    },
+    {
+      $addFields: {
+        role: { $arrayElemAt: ["$roleData", 0] },
+      },
+    },
+    { $unset: "roleData" },
+
+    // Sort
+    { $sort: sortStage },
+  ];
+
+  // Count tổng (không paginate)
+  const countPipeline = [...pipeline, { $count: "total" }];
+  const countResult = await User.aggregate(countPipeline);
+  const count = countResult[0]?.total || 0;
+
+  // Paginate
+  pipeline.push({ $skip: (page - 1) * limit });
+  pipeline.push({ $limit: limit });
+
+  const users = await User.aggregate(pipeline);
 
   return { users, count };
 };
