@@ -8,6 +8,9 @@ const orderApi = {
     getMyOrders: () => {
         return axiosClient.get('/orders/my-orders'); // Lưu ý: Backend đã đổi route này thành /my-orders
     },
+    getOrderById: (orderId) => {
+        return axiosClient.get(`/orders/${orderId}`);
+    },
 
     // --- ADMIN ---
     getAllOrders: (params) => {

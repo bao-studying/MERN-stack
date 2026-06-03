@@ -9,6 +9,7 @@
     "start": "node src/app.js"
   },
   "dependencies": {
+    "@payos/node": "^2.0.5",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

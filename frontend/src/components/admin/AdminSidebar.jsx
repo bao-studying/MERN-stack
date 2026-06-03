@@ -20,6 +20,9 @@ import {
   FaClipboardList,
   FaRegEnvelope,
   FaPercentage,
+  FaTags,
+  FaRegNewspaper,
+  FaEnvelope,
 } from "react-icons/fa";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -38,26 +41,27 @@ const DROPDOWN_STYLES = `
     align-items: center;
     gap: 10px;
     padding: 10px 16px;
-    color: rgba(255,255,255,.7);
+    color: rgba(17, 24, 39, 0.85);
     text-decoration: none;
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 14px;
     font-weight: 500;
+    background: rgba(255, 255, 255, 0.5);
   }
 
   /* Hiệu ứng hover riêng biệt cho trigger */
   .sb-dropdown-trigger:hover {
-    background: rgba(255,255,255,.1);
-    color: #fff;
+    background: rgba(15, 23, 42, 0.08);
+    color: rgba(17, 24, 39, 0.95);
   }
 
   /* Trạng thái khi menu con đang được chọn (Active Path) */
   .sb-dropdown-trigger.active-parent {
-    background: rgba(255,255,255,.05);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,.1);
+    background: rgba(59, 130, 246, 0.12);
+    color: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(59, 130, 246, 0.25);
   }
 
   .sb-dropdown-icon { font-size: 18px; flex-shrink: 0; }
@@ -66,7 +70,8 @@ const DROPDOWN_STYLES = `
   .sb-dropdown-arrow {
     font-size: 10px;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    opacity: .5;
+    opacity: .65;
+    color: rgba(17, 24, 39, 0.7);
   }
   
   /* Xoay mũi tên khi mở menu */
@@ -97,7 +102,7 @@ const DROPDOWN_STYLES = `
     align-items: center;
     gap: 10px;
     padding: 8px 16px;
-    color: rgba(255,255,255,.5);
+    color: rgba(17, 24, 39, 0.75);
     text-decoration: none;
     border-radius: 8px;
     font-size: 13px;
@@ -105,14 +110,57 @@ const DROPDOWN_STYLES = `
   }
 
   .sb-sub-link:hover {
-    color: #fff;
-    background: rgba(255,255,255,.08);
+    color: rgba(15, 23, 42, 0.95);
+    background: rgba(15, 23, 42, 0.08);
   }
 
   .sb-sub-link.active {
-    color: #fff;
-    background: rgba(255,255,255,.15);
+    color: rgba(15, 23, 42, 0.95);
+    background: rgba(59, 130, 246, 0.12);
     font-weight: 600;
+  }
+`;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SIDEBAR STYLES — Liquid Glass Effect with Rounded Corners
+───────────────────────────────────────────────────────────────────────────── */
+const SIDEBAR_STYLES = `
+  .admin-sidebar {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+    color: rgba(17, 24, 39, 0.95);
+  }
+
+  .admin-sidebar .sidebar-logo {
+    color: rgba(17, 24, 39, 0.95);
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  }
+
+  .admin-sidebar .text-white-50 {
+    color: rgba(15, 23, 42, 0.66) !important;
+  }
+
+  .admin-sidebar .sidebar-link {
+    color: rgba(17, 24, 39, 0.85);
+  }
+
+  .admin-sidebar .sidebar-link:hover {
+    color: rgba(15, 23, 42, 0.95);
+    background: rgba(15, 23, 42, 0.08);
+  }
+
+  .admin-sidebar .sidebar-link.active {
+    background: rgba(59, 130, 246, 0.14);
+    color: rgba(15, 23, 42, 0.95);
+  }
+
+  .admin-sidebar .sidebar-overlay {
+    background: rgba(0, 0, 0, 0.25);
   }
 `;
 
@@ -165,7 +213,7 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
       path: "/admin",
       label: "Dashboard",
       icon: <FaTachometerAlt />,
-      roles: ["admin", "manager", "staff"],
+      roles: ["admin", "manager"],
     },
     {
       path: "/admin/categories",
@@ -190,6 +238,12 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
       label: "Tin nhắn",
       icon: <FaComments />,
       roles: ["admin", "manager", "staff"],
+    },
+    {
+      path: "/admin/email-builder",
+      icon: <FaEnvelope />,
+      label: "Email cấu hình",
+      roles: ["admin", "manager"],
     },
     // "Tài Khoản" is replaced by the dropdown below — keep roles for reference
     // { path: "/admin/customers", label: "Tài Khoản", icon: <FaUsers />, roles: ["admin","manager"] },
@@ -222,6 +276,8 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
     <>
       {/* inject dropdown styles once */}
       <style dangerouslySetInnerHTML={{ __html: DROPDOWN_STYLES }} />
+      {/* inject sidebar glassmorphism styles */}
+      <style dangerouslySetInnerHTML={{ __html: SIDEBAR_STYLES }} />
 
       {/* Overlay for mobile */}
       {isOpen && (
@@ -238,44 +294,44 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
             Menu Chính
           </div>
 
-          {/* ── Group 1: luôn hiện với đủ role ── */}
+          {/* ── Group 1a: Các mục đầu tiên ── */}
           {[
             {
               path: "/admin",
               label: "Dashboard",
-              icon: <FaChartPie />, // Thay cho FaTachometerAlt (nhìn hiện đại hơn)
+              icon: <FaChartPie />,
               roles: ["admin", "manager", "staff"],
               end: true,
             },
             {
               path: "/admin/categories",
               label: "Danh mục",
-              icon: <FaLayerGroup />, // Thay cho FaBookOpen (đúng chất quản lý phân loại hơn)
+              icon: <FaLayerGroup />,
+              roles: ["admin", "manager"],
+            },
+            {
+              path: "/admin/brands",
+              label: "Thương hiệu",
+              icon: <FaTags />,
               roles: ["admin", "manager"],
             },
             {
               path: "/admin/products",
               label: "Sản phẩm",
-              icon: <FaCube />, // Thay cho FaBox (nhìn gọn và sắc nét hơn)
+              icon: <FaCube />,
               roles: ["admin", "manager"],
             },
             {
               path: "/admin/orders",
               label: "Đơn hàng",
-              icon: <FaClipboardList />, // Thay cho FaShoppingBag (phù hợp với giao diện quản trị)
+              icon: <FaClipboardList />,
               roles: ["admin", "manager", "staff"],
             },
             {
               path: "/admin/messages",
               label: "Tin nhắn",
-              icon: <FaRegEnvelope />, // Thay cho FaComments (kiểu phong bì tối giản)
+              icon: <FaRegEnvelope />,
               roles: ["admin", "manager", "staff"],
-            },
-            {
-              path: "/admin/vouchers",
-              label: "Voucher",
-              icon: <FaPercentage />, // Thay cho FaTicketAlt (nhìn rõ tính chất khuyến mãi)
-              roles: ["admin", "manager"],
             },
           ].map((item) => {
             if (!user || !item.roles.includes(user.role)) return null;
@@ -295,7 +351,7 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
             );
           })}
 
-          {/* ── Tài Khoản dropdown — chỉ render 1 lần, đúng vị trí ── */}
+          {/* ── Tài Khoản dropdown — Đã đẩy lên trên 3 bậc ── */}
           {canShowAccount && (
             <DropdownMenuItem
               trigger={{ label: "Tài Khoản", icon: <FaUsers /> }}
@@ -327,8 +383,45 @@ const AdminSidebar = ({ isOpen, closeSidebar }) => {
               })}
             </DropdownMenuItem>
           )}
-        </nav>
 
+          {/* ── Group 1b: 3 mục cuối cùng ── */}
+          {[
+            {
+              path: "/admin/vouchers",
+              label: "Voucher",
+              icon: <FaPercentage />,
+              roles: ["admin", "manager"],
+            },
+            {
+              path: "/admin/blogs",
+              label: "Blog",
+              icon: <FaRegNewspaper />,
+              roles: ["admin", "manager"],
+            },
+            {
+              path: "/admin/email-builder",
+              icon: <FaEnvelope />,
+              label: "Email cấu hình",
+              roles: ["admin", "manager"],
+            },
+          ].map((item) => {
+            if (!user || !item.roles.includes(user.role)) return null;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={!!item.end}
+                className={({ isActive }) =>
+                  `sidebar-link ${isActive ? "active" : ""}`
+                }
+                onClick={closeSidebar}
+              >
+                <span className="fs-5">{item.icon}</span>
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
         {/* Footer */}
         <div className="p-3 border-top border-secondary border-opacity-25 text-center text-white-50 small">
           Made By Duong Gia Bao

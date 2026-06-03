@@ -245,7 +245,7 @@ const CategoryManager = () => {
 
       {/* MODAL */}
       <CategoryModal
-        key={selectedCategory ? selectedCategory._id : 'create-new'} // <--- THÊM DÒNG NÀY
+        key={selectedCategory ? selectedCategory._id : "create-new"} // <--- THÊM DÒNG NÀY
         show={showModal}
         handleClose={() => setShowModal(false)}
         category={selectedCategory}

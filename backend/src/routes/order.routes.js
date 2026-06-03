@@ -1,47 +1,66 @@
 import express from "express";
 import { body } from "express-validator";
-import { 
-    createOrder, 
-    getMyOrders, 
-    getAllOrders, 
-    updateOrderStatus 
+import {
+  createOrder,
+  getMyOrders,
+  getOrderById,
+  getAllOrders,
+  updateOrderStatus,
 } from "../controllers/order.controller.js";
-import { verifyToken } from "../middlewares/auth.middleware.js"; 
-// Import middleware phân quyền
+
+// ==================== IMPORT WEBHOOK ====================
+import { handleSepayWebhook } from "../controllers/payment.controller.js";
+
+// Nếu bạn còn dùng PayOS thì giữ, còn không thì comment hoặc xóa
+// import { handlePayOSWebhook } from "../controllers/payment.controller.js";
+
+import { verifyToken } from "../middlewares/auth.middleware.js";
 import { requireRole } from "../middlewares/role.middleware.js";
 import { validateRequest } from "../middlewares/validate.middleware.js";
 
 const router = express.Router();
 
-// Tất cả route đều cần đăng nhập (xác thực user trước)
+// ====================== PUBLIC / WEBHOOK ======================
+router.post("/sepay-webhook", handleSepayWebhook);
+
+// Giữ lại nếu bạn vẫn dùng PayOS
+// router.post("/payos-webhook", handlePayOSWebhook);
+
+// ====================== CLIENT ROUTES ======================
 router.use(verifyToken);
 
-// --- CLIENT ROUTES (Khách hàng) ---
+// Lấy đơn hàng của chính user
+router.get("/my-orders", getMyOrders);
+router.get("/:id", getOrderById);
+
+// Tạo đơn hàng
 router.post(
-    "/",
-    [
-        body("shippingAddress").notEmpty().withMessage("Vui lòng nhập địa chỉ"),
-        body("phoneNumber").notEmpty().withMessage("Vui lòng nhập số điện thoại"),
-    ],
-    validateRequest,
-    createOrder
+  "/",
+  [
+    body("shippingAddress")
+      .notEmpty()
+      .withMessage("Vui lòng nhập địa chỉ giao hàng"),
+    body("phoneNumber").notEmpty().withMessage("Vui lòng nhập số điện thoại"),
+    body("paymentMethod")
+      .optional()
+      .isIn(["COD", "cod", "payos", "sepay"])
+      .withMessage("Phương thức thanh toán không hợp lệ"),
+  ],
+  validateRequest,
+  createOrder,
 );
 
-router.get("/my-orders", getMyOrders);
-
-// --- ADMIN / MANAGER / STAFF ROUTES ---
-// Yêu cầu: Admin, Manager, Staff đều xem và cập nhật được
-
+// ====================== ADMIN ROUTES ======================
 router.get(
-    "/admin/all", 
-    requireRole(['admin', 'manager', 'staff']), 
-    getAllOrders
+  "/admin/all",
+  requireRole(["admin", "manager", "staff"]),
+  getAllOrders,
 );
 
 router.put(
-    "/admin/:id/status", 
-    requireRole(['admin', 'manager', 'staff']), 
-    updateOrderStatus
+  "/admin/:id/status",
+  requireRole(["admin", "manager", "staff"]),
+  updateOrderStatus,
 );
 
 export default router;

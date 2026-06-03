@@ -15,6 +15,7 @@ import { useSearchParams } from "react-router-dom";
 import ProductModal from "../../components/admin/ProductModal";
 import productApi from "../../services/product.service";
 import categoryApi from "../../services/category.service";
+import brandApi from "../../services/brand.service";
 import "../../assets/styles/admin.css";
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -695,7 +696,7 @@ const DetailPanel = ({ product, onEdit, onDelete, onClose }) => {
             <span className="pm-info-key">Thương hiệu</span>
             <span className="pm-info-val">
               <span className="pm-badge pm-badge-brand">
-                {product.brand || "Khác"}
+                {product.brand?.name || "Khác"}
               </span>
             </span>
           </div>
@@ -718,8 +719,6 @@ const DetailPanel = ({ product, onEdit, onDelete, onClose }) => {
             </div>
           )}
         </div>
-
-         
       </div>
 
       {/* Footer actions */}
@@ -755,6 +754,7 @@ const ProductManager = () => {
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // NEW: selected product for detail panel (UI state only — no logic impact)
@@ -768,18 +768,29 @@ const ProductManager = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [prodRes, catRes] = await Promise.all([
+      const [prodRes, catRes, brandRes] = await Promise.all([
         productApi.getAll(),
         categoryApi.getAll({ params: { is_active: true } }),
+        brandApi.getAll({ params: { is_active: true, limit: 100 } }),
       ]);
+
       const productList = Array.isArray(prodRes.data)
         ? prodRes.data
-        : prodRes.data?.products || [];
+        : prodRes.data?.data || prodRes.data?.products || [];
       setProducts(productList);
+
       const categoryList = Array.isArray(catRes.data)
         ? catRes.data
-        : catRes.data?.categories || catRes.categories || [];
+        : catRes.data?.data ||
+          catRes.data?.categories ||
+          catRes.categories ||
+          [];
       setCategories(categoryList);
+
+      const brandList = Array.isArray(brandRes.brands)
+        ? brandRes.brands
+        : brandRes.data?.brands || brandRes.data?.data || brandRes.brands || [];
+      setBrands(brandList);
     } catch (error) {
       console.error("Error fetching data:", error);
       alert(
@@ -847,10 +858,20 @@ const ProductManager = () => {
         const res = await productApi.create(formData);
         savedProduct = res.data?.data || res.data;
       }
-      const categoryIdToFind = savedProduct.categoryId;
+      const categoryIdToFind =
+        savedProduct.categoryId && typeof savedProduct.categoryId === "object"
+          ? savedProduct.categoryId._id
+          : savedProduct.categoryId;
       const categoryObj = categories.find((c) => c._id === categoryIdToFind);
       if (categoryObj)
         savedProduct = { ...savedProduct, categoryId: categoryObj };
+
+      const brandIdToFind =
+        savedProduct.brand && typeof savedProduct.brand === "object"
+          ? savedProduct.brand._id
+          : savedProduct.brand;
+      const brandObj = brands.find((b) => b._id === brandIdToFind);
+      if (brandObj) savedProduct = { ...savedProduct, brand: brandObj };
 
       if (formData.id) {
         setProducts((prev) =>
@@ -914,13 +935,6 @@ const ProductManager = () => {
     setSearchParams(newParams);
   };
 
-  const uniqueBrands = React.useMemo(() => {
-    const brands = products
-      .map((p) => p.brand)
-      .filter((b) => b && b.trim() !== "" && b !== "Khác");
-    return [...new Set(brands)];
-  }, [products]);
-
   const panelOpen = !!selectedProduct;
 
   /* ── RENDER ── */
@@ -962,7 +976,7 @@ const ProductManager = () => {
           </p>
         </div>
         <button className="pm-btn-add" onClick={handleAddNew}>
-          <FaPlus style={{ fontSize: 11 }} />
+          <FaPlus size={12} className="pm-btn-icon" style={{ fontSize: 11 }} />
           Thêm mới
         </button>
       </div>
@@ -1079,7 +1093,7 @@ const ProductManager = () => {
                               </td>
                               <td>
                                 <span className="pm-badge pm-badge-brand">
-                                  {item.brand || "Khác"}
+                                  {item.brand?.name || "Khác"}
                                 </span>
                               </td>
                             </>
@@ -1193,7 +1207,7 @@ const ProductManager = () => {
         product={editingProduct}
         onSave={handleSave}
         categories={categories}
-        availableBrands={uniqueBrands}
+        availableBrands={brands}
       />
     </div>
   );

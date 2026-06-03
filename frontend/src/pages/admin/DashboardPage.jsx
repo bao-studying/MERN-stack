@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Badge, Spinner, Alert } from "react-bootstrap";
+import { Badge, Spinner, Alert, Form, Button } from "react-bootstrap";
 import {
   FaShoppingBag,
   FaUsers,
@@ -541,6 +541,7 @@ const DashboardPage = () => {
 
     fetchOrders();
   }, []);
+
   // 1. Tạo State lưu ngày (Mặc định lọc 7 ngày gần nhất)
   const [dateRange, setDateRange] = useState({
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -1018,6 +1019,7 @@ const DashboardPage = () => {
               </table>
             )}
           </div>
+
         </>
       )}
     </div>
@@ -1025,3 +1027,4 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
+

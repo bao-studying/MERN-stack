@@ -111,10 +111,8 @@ const LoginPage = () => {
               ></div>
             </div>
           </div>
-          <h1 className="display-4 fw-bold mb-3 text-white">TCG STORE</h1>
-          <p className="fs-5 opacity-90 text-white">
-            Chạm tay vào những quân bài huyền thoại.
-          </p>
+          <h1 className="display-4 fw-bold mb-3 text-white">KAZOKU CLUB</h1>
+          <p className="fs-5 opacity-90 text-white"></p>
         </div>
       </div>
 
@@ -143,12 +141,12 @@ const LoginPage = () => {
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold small text-secondary">
-                EMAIL TRAINER
+                EMAIL ĐĂNG NHẬP
               </Form.Label>
               <Form.Control
                 type="email"
                 name="email"
-                placeholder="trainer@tcgstore.com"
+                placeholder="trainer@gmail.com"
                 className="modern-input"
                 style={{ borderRadius: "12px" }}
                 value={formData.email}

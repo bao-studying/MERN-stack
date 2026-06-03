@@ -59,14 +59,17 @@ const ProductListPage = () => {
             item.images?.[0]?.imageUrl ||
             "https://placehold.co/300x300?text=No+Image",
           categoryId: item.categoryId,
-          brand: item.brand || "Khác",
+          brand:
+            typeof item.brand === "object"
+              ? item.brand?.name
+              : item.brand || "Khác",
         }));
         setAllProducts(formattedProducts);
         const brands = [
           ...new Set(
             formattedProducts
               .map((p) => p.brand)
-              .filter((b) => b && b !== "Khác"),
+              .filter((b) => b && b !== "Khác" && typeof b === "string"),
           ),
         ];
         setAvailableBrands(brands);
@@ -102,7 +105,10 @@ const ProductListPage = () => {
         ),
       );
     if (brands.length > 0)
-      result = result.filter((p) => brands.includes(p.brand));
+      result = result.filter((p) => {
+        const brandName = typeof p.brand === "object" ? p.brand?.name : p.brand;
+        return brands.includes(brandName);
+      });
     if (prices.length > 0) {
       result = result.filter((p) =>
         prices.some((range) => {
@@ -180,7 +186,7 @@ const ProductListPage = () => {
     .luxury-page { background: #080808; color: #fff; }
     .hero-banner { 
         height: 400px; 
-        background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://lichvietpro.com/images/dc/wallpaper/pokemon/1bPpTfC.jpg');
+        background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://scontent.fsgn5-10.fna.fbcdn.net/v/t39.30808-6/698876329_1427567409173701_9152911063164766816_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=833d8c&_nc_ohc=unxIyEF8NTsQ7kNvwHgC2QS&_nc_oc=AdplUkuYEG47wb9MLvV0O_wIIQo860Pw6Kqp7kIi7pxz23fZtSGgJU0AZUb-bjmmllY&_nc_zt=23&_nc_ht=scontent.fsgn5-10.fna&_nc_gid=Gdtio_ZBe3PvwzkgrYgG8w&_nc_ss=7b2a8&oh=00_Af4S1VYFctoh15XKrD0DiKWfGxx5dC7FW7J-bV65Ftk5Jg&oe=6A0B0BE6');
         background-attachment: fixed;
         display: flex; align-items: center; justify-content: center;
         border-bottom: 1px solid #d4af3733;
@@ -233,7 +239,7 @@ const ProductListPage = () => {
             className="display-3 fw-bold luxury-serif mb-3"
             style={{ letterSpacing: "2px" }}
           >
-            HỘP BÀI POKEMON{" "}
+            Võ Phục{" "}
           </h1>
           <nav aria-label="breadcrumb">
             <ol className="breadcrumb justify-content-center bg-transparent">

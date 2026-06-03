@@ -5,7 +5,6 @@ import Header from "../components/common/Header.jsx"; // Import Header mới
 import Footer from "../components/common/Footer";
 import FloatingChat from "../context/FloatingChat";
 
-
 const MainLayout = () => {
   return (
     <div className="d-flex flex-column min-vh-100">
@@ -15,7 +14,7 @@ const MainLayout = () => {
       {/* Nội dung chính */}
       <main className="flex-grow-1">
         <Outlet />
-    <FloatingChat />  
+        <FloatingChat />
       </main>
 
       {/* Footer (Giữ tạm hoặc tách ra file riêng sau) */}

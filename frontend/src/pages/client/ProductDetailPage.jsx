@@ -30,20 +30,21 @@ import { useWishlist } from "../../hooks/useWishlist";
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,700;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 
-  .pdp5-root {
-    position: relative;
-    min-height: 100vh;
-    font-family: 'DM Sans', sans-serif;
-    color: #1c1917;
-    overflow-x: hidden;
-  }
+.pdp5-root {
+  position: relative;
+  min-height: 100vh;
+  font-family: 'DM Sans', sans-serif;
+  color: #1c1917;
+  overflow-x: clip;   /* clip không chặn fixed elements như hidden */
+}
 
   /* ── FULL-BLEED BG ── */
-  .pdp5-bg {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-  }
+ .pdp5-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;   /* ← thêm dòng này */
+}
   .pdp5-bg-img {
     position: absolute;
     inset: 0;
@@ -302,6 +303,8 @@ background-position: 20% center;;
     position: relative; z-index: 1;
     background: #f5f3ef; padding: 56px 0 40px;
     border-top: 1px solid #e2ded6;
+      padding-bottom: 80px; /* hoặc đúng bằng height của Footer */
+
   }
   .pdp5-rel-title {
     font-family: 'Fraunces', serif; font-size: 28px; font-weight: 700;

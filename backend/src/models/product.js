@@ -30,7 +30,7 @@ const ProductSchema = new Schema({
     description: String,
     shortDescription: String,
 
-    brand: { type: String, index: true },
+    brand: { type: Schema.Types.ObjectId, ref: "Brand" },
     // Liên kết với Category
     categoryId: { type: Schema.Types.ObjectId, ref: "Category", required: true },
 
@@ -48,7 +48,19 @@ const ProductSchema = new Schema({
 ProductSchema.pre("save", async function() {
     // Nếu tên thay đổi, cập nhật slug
     if (this.isModified("name")) {
-        this.slug = slugify(this.name, { lower: true, strict: true });
+        let baseSlug = slugify(this.name, { lower: true, strict: true });
+        this.slug = baseSlug;
+
+        // Kiểm tra xem slug đã tồn tại chưa (trừ document hiện tại nếu là update)
+        const existingProduct = await mongoose.model("Product").findOne({
+            slug: baseSlug,
+            _id: { $ne: this._id } // Loại trừ document hiện tại
+        });
+
+        if (existingProduct) {
+            // Nếu slug đã tồn tại, thêm suffix timestamp để đảm bảo unique
+            this.slug = `${baseSlug}-${Date.now()}`;
+        }
     }
     // Logic: Nếu chưa có SKU, tự động sinh SKU ngẫu nhiên (Optional)
     if (!this.sku) {

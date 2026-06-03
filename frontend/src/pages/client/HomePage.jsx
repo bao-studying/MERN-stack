@@ -8,6 +8,7 @@ import {
   Card,
   Badge,
   Spinner,
+  Modal,
 } from "react-bootstrap";
 import {
   FaShippingFast,
@@ -15,19 +16,25 @@ import {
   FaMedal,
   FaArrowRight,
   FaClock,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import ProductCard from "../../components/product/ProductCard";
 import QuickViewModal from "../../components/product/QuickViewModal";
 import productApi from "../../services/product.service";
 import categoryApi from "../../services/category.service";
+import blogApi from "../../services/blog.service";
 import "../../assets/styles/home.css";
 
 const HomePage = () => {
   // --- STATE DỮ LIỆU (Giữ nguyên 100%) ---
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [showBlogModal, setShowBlogModal] = useState(false);
+  const [selectedBlog, setSelectedBlog] = useState(null);
 
   const [showQuickView, setShowQuickView] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -37,9 +44,10 @@ const HomePage = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [prodRes, catRes] = await Promise.all([
+        const [prodRes, catRes, blogRes] = await Promise.all([
           productApi.getAll({ limit: 12, sort: "-createdAt" }),
           categoryApi.getAll(),
+          blogApi.getAll({ limit: 3, sort: "-createdAt" }),
         ]);
 
         if (prodRes && prodRes.data) {
@@ -74,6 +82,30 @@ const HomePage = () => {
 
           setCategories(catList);
         }
+
+        // Blogs - Lấy thêm content và midImage
+        if (blogRes) {
+          const list = Array.isArray(blogRes.blogs)
+            ? blogRes.blogs
+            : Array.isArray(blogRes.data)
+              ? blogRes.data
+              : [];
+
+          setBlogs(
+            list.map((item) => ({
+              _id: item._id,
+              title: item.title,
+              content: item.content,
+              excerpt: item.excerpt,
+              imageUrl: item.imageUrl,
+              midImage: item.midImage,
+              publishedAt: item.publishedAt,
+              date: item.publishedAt
+                ? new Date(item.publishedAt).toLocaleDateString("vi-VN")
+                : "Không rõ",
+            })),
+          );
+        }
       } catch (error) {
         console.error("Lỗi tải trang chủ:", error);
       } finally {
@@ -89,6 +121,16 @@ const HomePage = () => {
     setShowQuickView(true);
   };
 
+  const openBlogModal = (blog) => {
+    setSelectedBlog(blog);
+    setShowBlogModal(true);
+  };
+
+  const closeBlogModal = () => {
+    setShowBlogModal(false);
+    setSelectedBlog(null);
+  };
+
   const getCategoryImage = (cat, index) => {
     if (cat.image || cat.imageUrl) return cat.image || cat.imageUrl;
     const placeholders = [
@@ -100,27 +142,6 @@ const HomePage = () => {
     ];
     return placeholders[index % placeholders.length];
   };
-
-  const blogs = [
-    {
-      id: 1,
-      title: "Bí quyết bảo quản thẻ bài bằng Toploader & Sleeves",
-      img: "https://images.unsplash.com/photo-1613771404721-1f92d799e49f?auto=format&fit=crop&w=600&q=80",
-      date: "20/01/2026",
-    },
-    {
-      id: 2,
-      title: "Tiêu chuẩn đánh giá PSA, BGS, CGC cơ bản",
-      img: "https://images.unsplash.com/photo-1636570823577-c3b03f0b263b?auto=format&fit=crop&w=600&q=80",
-      date: "18/01/2026",
-    },
-    {
-      id: 3,
-      title: "Top 5 thẻ Charizard đắt giá nhất lịch sử đấu giá",
-      img: "https://images.unsplash.com/photo-1643101808480-14197c3dc0eb?auto=format&fit=crop&w=600&q=80",
-      date: "15/01/2026",
-    },
-  ];
 
   if (loading) {
     return (
@@ -158,8 +179,7 @@ const HomePage = () => {
               className="vw-100 position-relative"
               style={{
                 height: "90vh",
-                backgroundImage:
-                  'url("https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?q=80&w=2069&auto=format&fit=crop")',
+                backgroundImage: `url("/images/homepage1.jpg")`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }}
@@ -194,7 +214,7 @@ const HomePage = () => {
                         fontWeight: "600",
                       }}
                     >
-                      PSA 10 GEM MINT
+                      câu lạc bộ võ thuật Nhật Bản
                     </p>
                     <h1
                       className="display-4 fw-bold mb-4 text-white"
@@ -203,13 +223,13 @@ const HomePage = () => {
                         lineHeight: "1.2",
                       }}
                     >
-                      Đỉnh Cao Của <br />{" "}
-                      <span style={{ color: "#d4af37" }}>Sự Sưu Tầm</span>
+                      KAZOKU <br />{" "}
+                      <span style={{ color: "#d4af37" }}>KARATE CLUB</span>
                     </h1>
                     <p className="lead mb-5 text-light opacity-75 fs-6">
-                      Khám phá những kiệt tác Holographic hiếm nhất, được kiểm
-                      định chất lượng khắt khe và bảo chứng giá trị nghệ thuật
-                      vượt thời gian.
+                      Nơi hội tụ tinh hoa võ đạo, truyền thống và sự phát triển
+                      của Karate tại Việt Nam. Hành trình rèn luyện, kết nối và
+                      tỏa sáng cùng Kazoku.
                     </p>
                     <Button
                       as={Link}
@@ -221,7 +241,7 @@ const HomePage = () => {
                         letterSpacing: "1px",
                       }}
                     >
-                      Bước Vào Kho Lưu Trữ <FaArrowRight className="ms-2" />
+                      Xem ngay <FaArrowRight className="ms-2" />
                     </Button>
                   </div>
                 </Container>
@@ -246,13 +266,13 @@ const HomePage = () => {
               {[
                 {
                   icon: <FaMedal size={32} style={{ color: "#d4af37" }} />,
-                  title: "100% Authentic",
-                  desc: "Kiểm định minh bạch, thẻ thật tuyệt đối",
+                  title: " Nhật Bản Cao Cấp",
+                  desc: " Sản phẩm chính hãng, chất lượng vượt trội",
                 },
                 {
                   icon: <FaShippingFast size={32} className="text-white" />,
                   title: "Vận Chuyển Đặc Quyền",
-                  desc: "Toploader & bọc chống sốc cao cấp",
+                  desc: " Vận Chuyển nhanh chóng, an toàn với dịch vụ cao cấp",
                 },
                 {
                   icon: <FaLeaf size={32} className="text-success" />,
@@ -389,9 +409,8 @@ const HomePage = () => {
                   Kiệt Tác <br /> Vừa Cập Bến
                 </h2>
                 <p className="text-  mb-5" style={{ lineHeight: "1.8" }}>
-                  Những mảnh ghép lịch sử của thế giới TCG vừa được bổ sung vào
-                  hầm chứa. Độ hiếm cao, tình trạng hoàn hảo, sẵn sàng cho những
-                  nhà sưu tầm khó tính nhất.
+                  Khám phá các bộ võ phục mới nhất, được tuyển chọn kỹ lưỡng từ
+                  những nguồn uy tín nhất.
                 </p>
                 <Button
                   as={Link}
@@ -436,9 +455,8 @@ const HomePage = () => {
           className="w-100 d-flex align-items-center justify-content-center text-center px-3"
           style={{
             height: "450px",
-            backgroundImage:
-              'url("https://images.unsplash.com/photo-1613771404721-1f92d799e49f?q=80&w=2069&auto=format&fit=crop")',
-            backgroundSize: "cover",
+            backgroundImage:`url("/images/homepage2.jpg")`,
+             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundAttachment: "fixed", // Hiệu ứng Parallax sang trọng
           }}
@@ -459,17 +477,19 @@ const HomePage = () => {
               className="fw-bold mb-4 display-4"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
-              Kho Báu Của Những{" "}
+              Tiếp Nối{"  "}
               <span style={{ color: "#d4af37", fontStyle: "italic" }}>
-                Huyền Thoại
+                Đam Mê
               </span>
             </h2>
             <p
               className="fs-5 mb-5 opacity-75 fw-light mx-auto"
               style={{ maxWidth: "600px" }}
             >
-              Hơn cả một đam mê, chúng tôi mang đến cho bạn một danh mục đầu tư
-              nghệ thuật đích thực với giá trị được bảo chứng toàn cầu.
+              Hơn cả một câu lạc bộ, chúng tôi là nơi kết nối những tâm hồn võ
+              đạo tạo thành một đại gia đình chung đam mê. Cùng nhau, chúng ta
+              tiếp nối truyền thống, phát triển và tỏa sáng trên hành trình
+              Karate.
             </p>
             <Button
               as={Link}
@@ -477,7 +497,7 @@ const HomePage = () => {
               className="rounded-0 px-5 py-3 fw-bold text-dark text-uppercase border-0"
               style={{ backgroundColor: "#d4af37", letterSpacing: "2px" }}
             >
-              Săn Tìm Grail Cards
+              Tham Gia Ngay
             </Button>
           </div>
         </div>
@@ -526,7 +546,7 @@ const HomePage = () => {
         </section>
       )}
 
-      {/* 7. BLOG - Magazine Style */}
+      {/* ====================== BLOG SECTION ====================== */}
       <section className="py-5">
         <Container style={{ padding: 0 }}>
           <div className="d-flex justify-content-between align-items-end mb-5">
@@ -535,33 +555,40 @@ const HomePage = () => {
                 className="text-warning text-uppercase mb-2"
                 style={{ letterSpacing: "3px", fontSize: "0.85rem" }}
               >
-                News & Guides
+                News
               </p>
               <h2
                 className="fw-bold text-white m-0"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
-                Sổ Tay Sưu Tầm
+                Blog & Các Hoạt Động Nổi Bật
               </h2>
             </div>
             <Link
               to="/blog"
               className="text-white text-decoration-none fw-bold small text-uppercase pb-1 border-bottom border-warning"
             >
-              Đọc tất cả
+              Đọc tất cả →
             </Link>
           </div>
 
           <Row className="g-4">
             {blogs.map((blog) => (
-              <Col md={4} key={blog.id}>
-                <div className="h-100 bg-transparent border-0 group cursor-pointer">
+              <Col md={4} key={blog._id}>
+                <div
+                  className="h-100 bg-transparent border-0 group cursor-pointer"
+                  onClick={() => openBlogModal(blog)}
+                >
+                  {/* Phần card blog giữ nguyên như cũ... */}
                   <div
                     className="overflow-hidden rounded-0 mb-3"
                     style={{ height: "250px" }}
                   >
                     <img
-                      src={blog.img}
+                      src={
+                        blog.imageUrl ||
+                        "https://placehold.co/600x400?text=Blog+Post"
+                      }
                       alt={blog.title}
                       className="w-100 h-100 object-fit-cover opacity-75 transition-all"
                       style={{
@@ -577,8 +604,9 @@ const HomePage = () => {
                       }}
                     />
                   </div>
+
                   <div
-                    className="text-  small mb-2 d-flex align-items-center gap-2 text-uppercase"
+                    className="text-small mb-2 d-flex align-items-center gap-2 text-uppercase"
                     style={{
                       fontSize: "0.75rem",
                       letterSpacing: "1px",
@@ -588,6 +616,7 @@ const HomePage = () => {
                     <FaClock size={12} style={{ color: "#d4af37" }} />{" "}
                     {blog.date}
                   </div>
+
                   <h5
                     className="fw-bold text-white mb-3"
                     style={{
@@ -597,21 +626,114 @@ const HomePage = () => {
                   >
                     {blog.title}
                   </h5>
+
                   <span
-                    className="text-warning text-uppercase"
+                    className="text-warning text-uppercase d-inline-flex align-items-center gap-1"
                     style={{
                       fontSize: "0.75rem",
                       letterSpacing: "1px",
                       fontWeight: "bold",
                     }}
                   >
-                    Đọc bài viết &rarr;
+                    Đọc bài viết <span style={{ fontSize: "1rem" }}>→</span>
                   </span>
                 </div>
               </Col>
             ))}
           </Row>
         </Container>
+
+        {/* BLOG MODAL - ĐÃ TỐI ƯU HIỂN THỊ HÌNH ẢNH */}
+        <Modal
+          show={showBlogModal}
+          onHide={closeBlogModal}
+          centered
+          size="xl" // Tăng kích thước modal để ảnh rộng hơn
+          dialogClassName="blog-modal"
+        >
+          <Modal.Header className="border-0 bg-dark text-light">
+            <Modal.Title className="fw-bold">{selectedBlog?.title}</Modal.Title>
+            <button
+              className="btn-close btn-close-white"
+              onClick={closeBlogModal}
+            ></button>
+          </Modal.Header>
+
+          <Modal.Body className="bg-dark text-light p-0">
+            {/* === ẢNH BÌA CHÍNH - SHOW HẾT === */}
+            {selectedBlog?.imageUrl && (
+              <div className="position-relative">
+                <img
+                  src={selectedBlog.imageUrl}
+                  alt={selectedBlog.title}
+                  className="w-100"
+                  style={{
+                    maxHeight: "65vh",
+                    objectFit: "contain", // ← Thay đổi quan trọng: show hết ảnh không bị crop
+                    backgroundColor: "#1a1a1a",
+                    display: "block",
+                    margin: "0 auto",
+                  }}
+                />
+                {/* Overlay gradient nhẹ ở dưới ảnh */}
+                <div
+                  className="position-absolute bottom-0 start-0 w-100"
+                  style={{
+                    height: "40%",
+                    background:
+                      "linear-gradient(transparent, rgba(10,10,10,0.85))",
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="p-4 p-md-5">
+              {/* Ngày đăng */}
+              <div className="d-flex align-items-center gap-3 mb-4 text-muted">
+                <FaCalendarAlt />
+                <span>{selectedBlog?.date}</span>
+              </div>
+
+              {/* Nội dung bài viết */}
+              <div
+                className="blog-content"
+                style={{
+                  lineHeight: "1.85",
+                  fontSize: "1.08rem",
+                  color: "#e0e0e0",
+                  whiteSpace: "pre-line",
+                }}
+              >
+                {selectedBlog?.content ||
+                  selectedBlog?.excerpt ||
+                  "Đang cập nhật nội dung..."}
+              </div>
+
+              {/* === ẢNH GIỮA BÀI VIẾT === */}
+              {selectedBlog?.midImage && (
+                <div className="my-5 text-center">
+                  <img
+                    src={selectedBlog.midImage}
+                    alt="Hình ảnh minh họa"
+                    className="img-fluid rounded shadow"
+                    style={{
+                      maxHeight: "520px",
+                      width: "auto",
+                      maxWidth: "100%",
+                      objectFit: "contain", // Show hết ảnh không crop
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </Modal.Body>
+
+          <Modal.Footer className="bg-dark border-0">
+            <Button variant="light" onClick={closeBlogModal} className="px-4">
+              Đóng
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </section>
 
       {/* QUICK VIEW MODAL (Giữ nguyên) */}

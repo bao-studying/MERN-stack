@@ -1,20 +1,33 @@
 // src/services/product.service.js
 import Product from "../models/product.js";
 import Category from "../models/category.js"; // <--- Cần nhập kho Category để kiểm tra
+import Brand from "../models/brand.js"; // <--- Thêm Brand import
 
 export const createProductService = async (data) => {
     // 1. Kiểm tra Category có tồn tại không
     // Lưu ý: data.categoryId là cái frontend gửi lên
     const categoryExists = await Category.findById(data.categoryId);
-    
+
     if (!categoryExists) {
         throw new Error("Category not found");
     }
 
-    // 2. Nếu Category OK, thì mới tạo Product
+    // 2. Kiểm tra Brand nếu có
+    if (data.brand) {
+        const brandExists = await Brand.findById(data.brand);
+        if (!brandExists) {
+            throw new Error("Brand not found");
+        }
+    }
+
+    // 3. Nếu Category và Brand OK, thì mới tạo Product
     // Mongoose sẽ tự chạy hook tạo slug và sku như ta đã định nghĩa trong Model
     const newProduct = await Product.create(data);
-    
+
+    // 4. Populate category và brand để trả lại data đầy đủ cho frontend
+    await newProduct.populate("categoryId", "_id name slug");
+    await newProduct.populate("brand", "_id name slug imageUrl");
+
     return newProduct;
 };
 
@@ -35,14 +48,16 @@ export const getAllProductsService = async () => {
     // Không dùng .limit() hay .skip() để Frontend tự xử lý phân trang
     return await Product.find(query)
         .populate("categoryId", "_id name slug") // Populate để lấy tên danh mục
+        .populate("brand", "_id name slug imageUrl") // Populate để lấy thông tin thương hiệu
         .sort({ createdAt: -1 });
 };
 
 export const getProductBySlugService = async (slug) => {
-    // Tìm sản phẩm theo slug, populate category để lấy tên danh mục
+    // Tìm sản phẩm theo slug, populate category và brand để lấy tên danh mục và thương hiệu
     const product = await Product.findOne({ slug: slug })
-        .populate("categoryId", "_id name slug");
-        
+        .populate("categoryId", "_id name slug")
+        .populate("brand", "_id name slug imageUrl");
+
     return product;
 };
 
@@ -61,6 +76,11 @@ export const updateProductService = async (id, data) => {
     // Tìm và update, trả về dữ liệu mới sau khi update
     const updatedProduct = await Product.findByIdAndUpdate(id, data, { new: true });
     if (!updatedProduct) throw new Error("Product not found");
+    
+    // Populate category và brand để trả lại data đầy đủ
+    await updatedProduct.populate("categoryId", "_id name slug");
+    await updatedProduct.populate("brand", "_id name slug imageUrl");
+    
     return updatedProduct;
 };
 

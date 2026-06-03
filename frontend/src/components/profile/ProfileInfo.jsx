@@ -29,7 +29,7 @@ const ProfileInfo = () => {
     phone: user?.phone || "",
     avatar:
       user?.avatarUrl ||
-      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=500&q=80",
+      " https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRyta2dLt66ptogpy7Do8MbLSNkYTfkIxwCVVN8-e71qu8bq-gzN6nvZLIZkljJ3ZaV98FSAKjqQibISEoT-U3P7t7kmh8I&s&ec=121585077",
   });
 
   // 2. STATE MẬT KHẨU

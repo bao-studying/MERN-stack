@@ -355,7 +355,9 @@ const SuccessPage = () => {
       ? "Thanh toán khi nhận hàng (COD)"
       : orderData?.paymentMethod === "banking"
         ? "Chuyển khoản ngân hàng (VietQR)"
-        : orderData?.paymentMethod || "—";
+        : orderData?.paymentMethod === "sepay"
+          ? "Thanh toán SePay (QR)"
+          : orderData?.paymentMethod || "—";
 
   return (
     <div className="sp-root">

@@ -14,9 +14,11 @@ import ProductListPage from "../pages/client/ProductListPage";
 import CheckoutPage from "../pages/client/CheckoutPage";
 import AboutPage from "../pages/client/AboutPage";
 import OffersPage from "../pages/client/OffersPage";
+import BlogPage from "../pages/client/BlogPage";
 
 import AdminLayout from "../layouts/AdminLayout";
 import DashboardPage from "../pages/admin/DashboardPage";
+import BlogManager from "../pages/admin/BlogManager";
 import ProductManager from "../pages/admin/ProductManager";
 import OrderManager from "../pages/admin/OrderManager";
 import CustomerManager from "../pages/admin/CustomerManager";
@@ -25,6 +27,7 @@ import SettingsPage from "../pages/admin/SettingsPage";
 import SystemLogPage from "../pages/admin/SystemLogPage";
 import AdminProfile from "../pages/admin/AdminProfile";
 import CategoryManager from "../pages/admin/CategoryManager";
+import BrandManager from "../pages/admin/BrandManager";
 import SuccessPage from "../pages/client/SuccessPage";
 
 import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
@@ -32,6 +35,7 @@ import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminMessages from "../../src/pages/admin/AdminMessages";
 import AdminVoucherManager from "../pages/admin/AdminVoucher";
+import EmailBuilder from "../pages/admin/EmailBuilder";
 
 const AppRoutes = () => {
   return (
@@ -45,6 +49,7 @@ const AppRoutes = () => {
         <Route path="/products" element={<ProductListPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/blog" element={<BlogPage />} />
         <Route path="/checkout/success" element={<SuccessPage />} />
         <Route path="/offers" element={<OffersPage />} />
       </Route>
@@ -76,6 +81,8 @@ const AppRoutes = () => {
           >
             <Route path="products" element={<ProductManager />} />
             <Route path="categories" element={<CategoryManager />} />
+            <Route path="brands" element={<BrandManager />} />
+            <Route path="blogs" element={<BlogManager />} />
           </Route>
           <Route path="vouchers" element={<AdminVoucherManager />} />
           {/* 3. Quản lý Đơn hàng: Cả 3 đều được vào */}
@@ -86,6 +93,11 @@ const AppRoutes = () => {
           >
             <Route path="orders" element={<OrderManager />} />
             <Route path="messages" element={<AdminMessages />} />
+          </Route>
+           <Route
+            element={<ProtectedRoute allowedRoles={["admin", "manager"]} />}
+          >
+          <Route path="/admin/email-builder" element={<EmailBuilder />} />
           </Route>
 
           {/* 4. Quản lý Khách hàng*/}

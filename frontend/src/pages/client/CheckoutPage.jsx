@@ -13,13 +13,14 @@ import {
   FaCheckCircle,
   FaMapMarkerAlt,
   FaBox,
+  FaQrcode,
 } from "react-icons/fa";
+import SepayPaymentModal from "../../components/common/SepayPaymentModal";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../../hooks/useCart";
 import { useAuth } from "../../hooks/useAuth";
 import orderApi from "../../services/order.service";
 import userApi from "../../services/user.service";
-import axiosClient from "../../services/axiosClient";
 import toast from "react-hot-toast";
 import "../../assets/styles/cart-checkout.css";
 
@@ -430,6 +431,13 @@ const CheckoutPage = () => {
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [appliedVoucher, setAppliedVoucher] = useState(cartVoucher);
   const [voucherError, setVoucherError] = useState("");
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [currentOrderData, setCurrentOrderData] = useState({
+    orderNumber: "",
+    totalAmount: 0,
+    orderId: "",
+  });
+  const [paymentStatusMessage, setPaymentStatusMessage] = useState("");
   // ────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -614,9 +622,26 @@ const CheckoutPage = () => {
       };
       const res = await orderApi.createOrder(orderPayload);
       if (res.success) {
-        toast.success("Đặt hàng thành công! Vui lòng kiểm tra email.");
+        const order = res.data;
         clearCart();
-        navigate("/checkout/success", { state: { order: res.data } });
+
+        if (paymentMethod === "sepay") {
+          toast.success(
+            "Đơn hàng Thanh toán online đã được tạo. Vui lòng quét QR để thanh toán.",
+          );
+          setCurrentOrderData({
+            orderNumber: order.orderNumber,
+            totalAmount: order.totalAmount_cents || total,
+            orderId: order._id,
+          });
+          setPaymentStatusMessage(
+            "Đang chờ Hệ Thống xác nhận thanh toán. Đừng đóng cửa sổ này.",
+          );
+          setIsPayModalOpen(true);
+        } else {
+          toast.success("Đặt hàng thành công! Vui lòng kiểm tra email.");
+          navigate("/checkout/success", { state: { order } });
+        }
       }
     } catch (error) {
       console.error(error);
@@ -630,6 +655,56 @@ const CheckoutPage = () => {
     if (!user) navigate("/login");
   }, [user, navigate]);
 
+  useEffect(() => {
+    if (!isPayModalOpen || !currentOrderData.orderNumber) return;
+
+    let pollingId;
+    const checkPaymentStatus = async () => {
+      try {
+        const res = await orderApi.getOrderById(currentOrderData.orderId);
+        if (!res.success) {
+          setPaymentStatusMessage(
+            "Không thể kiểm tra trạng thái thanh toán. Vui lòng thử lại.",
+          );
+          return;
+        }
+
+        const foundOrder = res.data;
+
+        if (!foundOrder) {
+          setPaymentStatusMessage(
+            "Đang chờ Hệ Thống xác nhận. Vui lòng giữ nguyên màn hình.",
+          );
+          return;
+        }
+
+        if (foundOrder.paymentStatus === "paid") {
+          setPaymentStatusMessage(
+            "Thanh toán thành công. Đang chuyển hướng...",
+          );
+          setTimeout(() => {
+            setIsPayModalOpen(false);
+            navigate("/checkout/success", { state: { order: foundOrder } });
+          }, 300);
+          return;
+        }
+
+        setPaymentStatusMessage(
+          "Đang chờ Hệ Thống xác nhận thanh toán. Đừng đóng cửa sổ này.",
+        );
+      } catch (err) {
+        console.error("SePay polling error:", err);
+        setPaymentStatusMessage(
+          "Lỗi kết nối, sẽ thử lại tự động trong giây lát...",
+        );
+      }
+    };
+
+    checkPaymentStatus();
+    pollingId = setInterval(checkPaymentStatus, 5000);
+    return () => clearInterval(pollingId);
+  }, [currentOrderData.orderNumber, isPayModalOpen, navigate]);
+
   /* ── RENDER ── */
   return (
     <div className="ck-root">
@@ -642,6 +717,15 @@ const CheckoutPage = () => {
 
       {/* Blurred backdrop */}
       <BackdropGrid />
+
+      {/* 🔥 FIX: Move SepayPaymentModal OUTSIDE ck-modal to render at root level */}
+      <SepayPaymentModal
+        isOpen={isPayModalOpen}
+        onClose={() => setIsPayModalOpen(false)}
+        orderNumber={currentOrderData.orderNumber}
+        totalAmount={currentOrderData.totalAmount}
+        statusMessage={paymentStatusMessage}
+      />
 
       {/* Modal wrapper */}
       <div className="ck-modal-wrap">
@@ -900,40 +984,25 @@ const CheckoutPage = () => {
               </div>
 
               <div
-                className={`ck-pay-card`}
-                style={{ opacity: 0.55, cursor: "not-allowed" }}
+                className={`ck-pay-card${paymentMethod === "sepay" ? " selected" : ""}`}
+                onClick={() => setPaymentMethod("sepay")}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div className="ck-pay-icon blue">
-                    <FaUniversity />
+                    <FaQrcode />
                   </div>
                   <div>
-                    <div className="ck-pay-name">
-                      Chuyển khoản ngân hàng (VietQR)
-                    </div>
+                    <div className="ck-pay-name">Thanh toán Online</div>
                     <div className="ck-pay-sub">
-                      Quét mã QR — Xác nhận tự động
+                      Quét mã QR & xác nhận tự động
                     </div>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        background: "#fef3c7",
-                        color: "#92400e",
-                        padding: "1px 7px",
-                        borderRadius: 10,
-                        display: "inline-block",
-                        marginTop: 3,
-                      }}
-                    >
-                      Sắp ra mắt
-                    </span>
                   </div>
                 </div>
-                <div
-                  className="ck-radio"
-                  style={{ flexShrink: 0, opacity: 0.3 }}
-                />
+                <div className="ck-radio" style={{ flexShrink: 0 }}>
+                  {paymentMethod === "sepay" && (
+                    <div className="ck-radio-dot" />
+                  )}
+                </div>
               </div>
             </div>
             {/* end form-panel */}

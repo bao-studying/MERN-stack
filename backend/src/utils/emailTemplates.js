@@ -45,3 +45,33 @@ export const orderConfirmationTemplate = (order, userName) => {
     </div>
     `;
 };
+    export const confirmedStatusTemplate = (order, userName) => `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #ddd;border-radius:10px;">
+  <h2 style="color:#7c3aed;text-align:center;">✅ Đơn hàng đã được xác nhận!</h2>
+  <p>Xin chào <strong>${userName}</strong>,</p>
+  <p>Đơn hàng <strong>#${order.orderNumber}</strong> đã được xác nhận và đang được chuẩn bị.</p>
+  <p><strong>Địa chỉ:</strong> ${order.shippingAddress}</p>
+</div>`;
+
+    export const shippingStatusTemplate = (order, userName) => `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #ddd;border-radius:10px;">
+  <h2 style="color:#1d4ed8;text-align:center;">🚚 Đơn hàng đang trên đường giao!</h2>
+  <p>Xin chào <strong>${userName}</strong>,</p>
+  <p>Đơn hàng <strong>#${order.orderNumber}</strong> đã được bàn giao cho đơn vị vận chuyển.</p>
+  <p><strong>Địa chỉ:</strong> ${order.shippingAddress}</p>
+</div>`;
+
+    export const completedStatusTemplate = (order, userName) => `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #ddd;border-radius:10px;">
+  <h2 style="color:#15803d;text-align:center;">🎉 Đơn hàng đã giao thành công!</h2>
+  <p>Xin chào <strong>${userName}</strong>,</p>
+  <p>Đơn hàng <strong>#${order.orderNumber}</strong> đã được giao. Cảm ơn bạn đã mua sắm!</p>
+</div>`;
+
+    export const cancelledStatusTemplate = (order, userName) => `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #ddd;border-radius:10px;">
+  <h2 style="color:#dc2626;text-align:center;">❌ Đơn hàng đã bị hủy</h2>
+  <p>Xin chào <strong>${userName}</strong>,</p>
+  <p>Đơn hàng <strong>#${order.orderNumber}</strong> đã bị hủy. Nếu đã thanh toán, tiền hoàn lại trong 3-5 ngày.</p>
+</div>`;
+

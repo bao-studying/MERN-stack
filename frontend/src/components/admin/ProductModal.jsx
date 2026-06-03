@@ -21,6 +21,7 @@ import {
   FaWeightHanging,
   FaTrash,
 } from "react-icons/fa";
+import imageCompression from "browser-image-compression";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    STYLES — scoped to .pmm-root, never bleeds into host app
@@ -452,9 +453,6 @@ const ProductModal = ({
 }) => {
   const fileInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState("url");
-  const [brandMode, setBrandMode] = useState(
-    product && product.brand ? "select" : "select",
-  );
   const [tempUrl, setTempUrl] = useState("");
 
   const getCategoryId = (prod) => {
@@ -472,15 +470,14 @@ const ProductModal = ({
           preview: img.imageUrl || "https://placehold.co/300x300?text=No+Image",
         })) || [];
       const firstVariant = product.variants?.[0] || {};
-      const isExistingBrand = availableBrands.includes(product.brand);
-      if (product.brand && !isExistingBrand) {
-        // Side effect trong init state
-      }
       return {
         id: product._id || product.id,
         name: product.name,
         category: getCategoryId(product),
-        brand: product.brand || "",
+        brand:
+          product.brand && typeof product.brand === "object"
+            ? product.brand._id
+            : product.brand || "",
         price_cents: product.price_cents,
         stock: product.variants?.[0]?.stock || product.stock || 0,
         sku: firstVariant.sku || product.sku || "",
@@ -508,14 +505,29 @@ const ProductModal = ({
     }
   };
 
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    const newImages = [];
-    files.forEach((file) => {
-      if (formData.images.length + newImages.length < 3) {
+const handleFileChange = async (e) => {
+  const files = Array.from(e.target.files);
+  const newImages = [];
+
+  for (const file of files) {
+    if (formData.images.length + newImages.length < 3) {
+      try {
+        // Compress ảnh xuống 1MB
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        };
+        const compressedFile = await imageCompression(file, options);
+
+        // Convert compressed file thành base64
         const reader = new FileReader();
         reader.onloadend = () => {
-          newImages.push({ url: reader.result, preview: reader.result });
+          newImages.push({
+            url: reader.result,
+            preview: reader.result,
+          });
+
           if (newImages.length === files.length) {
             setFormData({
               ...formData,
@@ -523,10 +535,13 @@ const ProductModal = ({
             });
           }
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(compressedFile); // ← Dùng file đã compress
+      } catch (error) {
+        console.error("Compress error:", error);
       }
-    });
-  };
+    }
+  }
+};
 
   const handleRemoveImage = (index) => {
     const updatedImages = formData.images.filter((_, i) => i !== index);
@@ -540,7 +555,7 @@ const ProductModal = ({
       !formData.category ||
       !formData.brand
     ) {
-      alert("Vui lòng điền tên, danh mục và giá!");
+      alert("Vui lòng điền tên, danh mục, thương hiệu và giá!");
       return;
     }
     const payload = {
@@ -755,52 +770,25 @@ const ProductModal = ({
                       {/* Thương hiệu */}
                       <div className="pmm-field">
                         <label className="pmm-lbl">
-                          <span>
-                            Thương hiệu <span className="pmm-req">*</span>
-                          </span>
-                          <button
-                            className="pmm-toggle-link"
-                            onClick={() => {
-                              setBrandMode((prev) =>
-                                prev === "select" ? "new" : "select",
-                              );
-                              setFormData({ ...formData, brand: "" });
-                            }}
-                          >
-                            {brandMode === "select"
-                              ? "+ Thêm mới"
-                              : "Chọn có sẵn"}
-                          </button>
+                          Thương hiệu <span className="pmm-req">*</span>
                         </label>
-                        {brandMode === "select" ? (
-                          <select
-                            className="pmm-sel"
-                            name="brand"
-                            value={formData.brand}
-                            onChange={handleChange}
-                          >
-                            <option value="">-- Chọn thương hiệu --</option>
-                            {availableBrands.map((b, idx) => (
-                              <option key={idx} value={b}>
-                                {b}
-                              </option>
-                            ))}
-                            <option value="Khác">Khác</option>
-                          </select>
-                        ) : (
-                          <div className="pmm-icon-wrap">
-                            <span className="pmm-icon-pfx">
-                              <FaTag />
-                            </span>
-                            <input
-                              className="pmm-inp"
-                              type="text"
-                              name="brand"
-                              value={formData.brand}
-                              onChange={handleChange}
-                              placeholder="Nhập tên thương hiệu..."
-                            />
-                          </div>
+                        <select
+                          className="pmm-sel"
+                          name="brand"
+                          value={formData.brand}
+                          onChange={handleChange}
+                        >
+                          <option value="">-- Chọn thương hiệu --</option>
+                          {availableBrands.map((brand) => (
+                            <option key={brand._id} value={brand._id}>
+                              {brand.name}
+                            </option>
+                          ))}
+                        </select>
+                        {availableBrands.length === 0 && (
+                          <small className="text-muted d-block mt-2">
+                            Chưa có thương hiệu. Vui lòng thêm thương hiệu trước.
+                          </small>
                         )}
                       </div>
                     </div>

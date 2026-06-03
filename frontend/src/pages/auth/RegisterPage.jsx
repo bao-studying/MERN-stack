@@ -125,10 +125,10 @@ const RegisterPage = () => {
             </div>
           </div>
           <h1 className="display-4 fw-bold mb-3 text-white">
-            Gia Nhập <br /> Cộng Đồng TCG
+            Gia Nhập <br /> Cộng Đồng KAZOKU KARATE CLUB
           </h1>
           <p className="fs-5 opacity-90 text-white">
-            Bắt đầu hành trình sưu tầm những thẻ bài Grail hiếm nhất.
+            Bắt đầu hành trình võ đạo ngay bây giờ.
           </p>
         </div>
       </div>
@@ -144,7 +144,7 @@ const RegisterPage = () => {
           <div className="text-center mb-4">
             <h2 className="fw-bold text-dark mb-2">Đăng Ký Thành Viên</h2>
             <p className="text-muted small">
-              Trở thành Trainer chính thức của TCG Store
+              Trở thành Thành viên chính thức của Kazoku
             </p>
           </div>
 

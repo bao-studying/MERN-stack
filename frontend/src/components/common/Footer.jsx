@@ -29,16 +29,16 @@ const Footer = () => {
                 className="luxury-serif fw-bold mb-0"
                 style={{ letterSpacing: "2px" }}
               >
-                THE VAULT
+                KAZOKU KARATE CLUB
               </h3>
             </div>
             <p
               className="text-  small mb-4 pr-lg-5"
               style={{ lineHeight: "1.8", letterSpacing: "0.5px" }}
             >
-              Nơi hội tụ những giá trị sưu tầm đích thực. Chúng tôi không chỉ
-              cung cấp thẻ bài, chúng tôi bảo tồn những mảnh ghép lịch sử của
-              thế giới TCG với tiêu chuẩn kiểm định khắt khe nhất.
+              KAZOKU KARATE CLUB - Nơi hội tụ tinh hoa võ đạo, truyền thống và
+              sự phát triển của Karate tại Việt Nam. Hành trình rèn luyện, kết
+              nối và tỏa sáng cùng Kazoku.
             </p>
             <div className="d-flex gap-4 mt-4">
               {[FaFacebookF, FaInstagram, FaYoutube, FaTiktok].map(
@@ -98,7 +98,7 @@ const Footer = () => {
             <ul className="list-unstyled d-flex flex-column gap-3">
               <li>
                 <Link to="#" className="footer-link">
-                  Ký gửi thẻ bài
+                  Ký gửi
                 </Link>
               </li>
               <li>
@@ -125,10 +125,11 @@ const Footer = () => {
               className="text-gold text-uppercase mb-4 fw-bold tracking-widest"
               style={{ fontSize: "0.75rem" }}
             >
-              Bản tin The Vault
+              Bản tin
             </h6>
             <p className="text small mb-4 italic">
-              Đăng ký để nhận thông báo sớm nhất về các đợt đấu giá thẻ hiếm.
+              Đăng ký để nhận thông báo sớm nhất về các đợt sản phẩm mới cập
+              bến.
             </p>
 
             <Form onSubmit={(e) => e.preventDefault()}>
@@ -148,12 +149,12 @@ const Footer = () => {
               <div className="d-flex align-items-center gap-3 mb-2">
                 <FaMapMarkerAlt className="text-gold" size={12} />
                 <span className="text-  small">
-                  Quận 1, Thành phố Hồ Chí Minh
+                  Quận Tân Phú, Thành phố Hồ Chí Minh
                 </span>
               </div>
               <div className="d-flex align-items-center gap-3 mb-2">
                 <FaPhoneAlt className="text-gold" size={12} />
-                <span className="text-  small">+84 93X XXX XXX</span>
+                <span className="text-  small">+84 939 743 836</span>
               </div>
             </div>
           </Col>
@@ -167,8 +168,9 @@ const Footer = () => {
               className="text-  mb-0"
               style={{ fontSize: "0.7rem", letterSpacing: "1px" }}
             >
-              © 2026 THE VAULT COLLECTIBLES. TRUNG TÂM KIỂM ĐỊNH THẺ BÀI CAO
-              CẤP.
+              © 2026 Duong Gia Bao. All Rights Reserved. Designed by Bao Team.{" "}
+              <br></br>
+              Powered by React & Bootstrap.
             </p>
           </Col>
           <Col md={6} className="text-center text-md-end">
