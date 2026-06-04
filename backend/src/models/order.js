@@ -25,6 +25,7 @@ const OrderSchema = new Schema(
     // Thông tin giao hàng (Bắt buộc phải có)
     shippingAddress: { type: String, required: true },
     phoneNumber: { type: String, required: true },
+    customerName: { type: String },
     note: String, // Ghi chú của khách hàng
 
     totalAmount_cents: { type: Number, required: true },

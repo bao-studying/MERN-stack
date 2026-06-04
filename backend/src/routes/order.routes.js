@@ -10,6 +10,8 @@ import {
 
 // ==================== IMPORT WEBHOOK ====================
 import { handleSepayWebhook } from "../controllers/payment.controller.js";
+import { handleTelegramWebhook } from "../controllers/payment.controller.js";
+
 
 // Nếu bạn còn dùng PayOS thì giữ, còn không thì comment hoặc xóa
 // import { handlePayOSWebhook } from "../controllers/payment.controller.js";
@@ -22,6 +24,9 @@ const router = express.Router();
 
 // ====================== PUBLIC / WEBHOOK ======================
 router.post("/sepay-webhook", handleSepayWebhook);
+
+// Route Webhook cho Telegram Bot
+router.post("/telegram-webhook", handleTelegramWebhook);
 
 // Giữ lại nếu bạn vẫn dùng PayOS
 // router.post("/payos-webhook", handlePayOSWebhook);

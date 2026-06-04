@@ -200,6 +200,9 @@ export const createOrderService = async (userId, orderData) => {
   if (!cart || cart.items.length === 0) throw new Error("Giỏ hàng trống");
 
   const { voucherId, discountAmount = 0, selectedProductIds = [] } = orderData;
+  const user = await User.findById(userId);
+  const customerName =
+    orderData.customerName || user?.name || user?.email || "Khách hàng";
 
   const selectedIdSet = new Set(
     Array.isArray(selectedProductIds)
@@ -251,6 +254,7 @@ export const createOrderService = async (userId, orderData) => {
     totalAmount_cents: finalTotal,
     shippingAddress: orderData.shippingAddress,
     phoneNumber: orderData.phoneNumber,
+    customerName,
     note: orderData.note,
     paymentMethod: orderData.paymentMethod || "COD",
     status: "pending",
@@ -278,7 +282,6 @@ export const createOrderService = async (userId, orderData) => {
   }
 
   // ── Gửi email xác nhận đặt hàng ──
-  const user = await User.findById(userId);
   if (user?.email) {
     (async () => {
       try {
