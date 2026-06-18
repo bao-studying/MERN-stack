@@ -20,6 +20,8 @@ import {
   FaBarcode,
   FaWeightHanging,
   FaTrash,
+  FaPlus,
+  FaLayerGroup,
 } from "react-icons/fa";
 import imageCompression from "browser-image-compression";
 
@@ -276,6 +278,9 @@ const MODAL_STYLES = `
     margin: 0 0 10px;
     padding-bottom: 6px;
     border-bottom: 1px solid var(--c-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   /* field grid */
@@ -312,6 +317,7 @@ const MODAL_STYLES = `
     appearance: none;
   }
   .pmm-inp:focus { border-color: var(--c-accent); background: #fff; }
+  .pmm-inp:disabled { color: var(--c-subtle); cursor: not-allowed; }
 
   .pmm-icon-wrap {
     display: flex;
@@ -387,6 +393,140 @@ const MODAL_STYLES = `
   }
   .pmm-toggle-link:hover { text-decoration: underline; }
 
+  /* ══════════════════════ VARIANTS ══════════════════════ */
+  .pmm-variant-card {
+    border: 1px solid var(--c-border);
+    border-radius: 9px;
+    background: var(--c-bg);
+    padding: 12px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .pmm-variant-card:last-child { margin-bottom: 0; }
+  .pmm-variant-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .pmm-variant-tag {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--c-accent);
+    background: rgba(200,73,12,.08);
+    border: 1px solid rgba(200,73,12,.2);
+    border-radius: 20px;
+    padding: 2px 9px;
+    font-family: var(--c-mono);
+  }
+  .pmm-variant-del {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    border: 1px solid var(--c-border);
+    background: var(--c-surf);
+    color: var(--c-muted);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .pmm-variant-del:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+  .pmm-variant-del:disabled { opacity: .3; cursor: not-allowed; }
+
+  .pmm-attr-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .pmm-attr-row { display: flex; gap: 6px; align-items: center; }
+  .pmm-attr-inp {
+    padding: 6px 8px;
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: var(--c-font);
+    color: var(--c-text);
+    background: var(--c-surf);
+    outline: none;
+    transition: border-color .15s;
+  }
+  .pmm-attr-inp:focus { border-color: var(--c-accent); }
+  .pmm-attr-key { flex: 0 0 38%; }
+  .pmm-attr-val { flex: 1; }
+  .pmm-attr-del {
+    width: 22px; height: 22px;
+    border-radius: 5px;
+    border: 1px solid var(--c-border);
+    background: var(--c-surf);
+    color: var(--c-subtle);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 9px;
+    flex-shrink: 0;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .pmm-attr-del:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+  .pmm-attr-addbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--c-muted);
+    background: var(--c-surf);
+    border: 1px dashed var(--c-border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: border-color .12s, color .12s;
+  }
+  .pmm-attr-addbtn:hover { border-color: var(--c-accent); color: var(--c-accent); }
+
+  .pmm-variant-name-preview {
+    font-size: 11.5px;
+    color: var(--c-muted);
+    margin-bottom: 8px;
+    padding: 5px 9px;
+    background: var(--c-surf);
+    border-radius: 6px;
+    border: 1px solid var(--c-border);
+  }
+  .pmm-variant-name-preview b { color: var(--c-text); font-weight: 600; }
+
+  .pmm-sku-preview {
+    font-family: var(--c-mono);
+    font-size: 10.5px;
+    color: var(--c-subtle);
+  }
+
+  .pmm-add-variant-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px;
+    border-radius: 8px;
+    border: 1.5px dashed var(--c-border);
+    background: var(--c-surf);
+    color: var(--c-muted);
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: var(--c-font);
+    cursor: pointer;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .pmm-add-variant-btn:hover { border-color: var(--c-accent); color: var(--c-accent); background: #fff8f5; }
+
+  .pmm-variant-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11.5px;
+    color: var(--c-muted);
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--c-border);
+  }
+  .pmm-variant-total b { color: var(--c-green); font-family: var(--c-mono); font-size: 13px; }
+
   /* ══════════════════════ FOOTER ══════════════════════ */
   .pmm-footer {
     display: flex;
@@ -426,22 +566,64 @@ const MODAL_STYLES = `
 `;
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   DEFAULT_VALUES — identical to original
+   HELPERS
+───────────────────────────────────────────────────────────────────────────── */
+
+// Tạo 1 id tạm cho biến thể mới (chỉ dùng để React key + thao tác UI,
+// không gửi lên backend — backend tự sinh _id và SKU thật)
+let tempIdCounter = 0;
+const makeTempId = () => `tmp-${Date.now()}-${tempIdCounter++}`;
+
+// Biến thể trống mặc định: 1 cặp attribute trống để user điền ngay
+const createEmptyVariant = () => ({
+  _tempId: makeTempId(),
+  attributes: [{ key: "", value: "" }],
+  price_cents: "",
+  stock: "",
+});
+
+// Ghép tên hiển thị (preview) từ danh sách attributes — giống logic backend
+const buildVariantNamePreview = (attributes) => {
+  const parts = attributes
+    .filter((a) => a.key.trim() && a.value.trim())
+    .map((a) => `${a.key.trim()}: ${a.value.trim()}`);
+  return parts.length > 0 ? parts.join(", ") : null;
+};
+
+// Chuyển attributes dạng [{key,value}] (UI) -> object {key: value} (gửi backend)
+const attributesArrayToObject = (attributes) => {
+  const obj = {};
+  attributes.forEach((a) => {
+    if (a.key.trim()) obj[a.key.trim()] = a.value.trim();
+  });
+  return obj;
+};
+
+// Chuyển object {key: value} (từ backend) -> [{key,value}] (UI)
+const attributesObjectToArray = (attrObj) => {
+  if (!attrObj || typeof attrObj !== "object") return [{ key: "", value: "" }];
+  const entries = Object.entries(attrObj).map(([key, value]) => ({
+    key,
+    value: String(value ?? ""),
+  }));
+  return entries.length > 0 ? entries : [{ key: "", value: "" }];
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DEFAULT_VALUES
 ───────────────────────────────────────────────────────────────────────────── */
 const DEFAULT_VALUES = {
   name: "",
   category: "",
   brand: "",
   price_cents: "",
-  stock: "",
-  sku: "",
-  variantName: "",
   description: "",
   images: [],
+  variants: [createEmptyVariant()],
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   COMPONENT — all logic 100% identical to original
+   COMPONENT
 ───────────────────────────────────────────────────────────────────────────── */
 const ProductModal = ({
   show,
@@ -469,7 +651,20 @@ const ProductModal = ({
           url: img.imageUrl,
           preview: img.imageUrl || "https://placehold.co/300x300?text=No+Image",
         })) || [];
-      const firstVariant = product.variants?.[0] || {};
+
+      // Map các biến thể đã có (từ DB) sang format UI (_tempId + attributes dạng array)
+      const existingVariants =
+        product.variants?.length > 0
+          ? product.variants.map((v) => ({
+              _tempId: makeTempId(),
+              _id: v._id, // giữ lại _id thật nếu là biến thể cũ (để backend biết là update, không phải tạo mới)
+              sku: v.sku || "",
+              attributes: attributesObjectToArray(v.attributes),
+              price_cents: v.price_cents ?? "",
+              stock: v.stock ?? "",
+            }))
+          : [createEmptyVariant()];
+
       return {
         id: product._id || product.id,
         name: product.name,
@@ -479,21 +674,20 @@ const ProductModal = ({
             ? product.brand._id
             : product.brand || "",
         price_cents: product.price_cents,
-        stock: product.variants?.[0]?.stock || product.stock || 0,
-        sku: firstVariant.sku || product.sku || "",
-        variantName: firstVariant.name || "",
         description: product.description || "",
         images: existingImages.slice(0, 3),
+        variants: existingVariants,
       };
     }
     return DEFAULT_VALUES;
   });
 
-  /* ── handlers (unchanged) ── */
+  /* ── basic field handlers ── */
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  /* ── image handlers (unchanged) ── */
   const handleAddUrl = () => {
     if (tempUrl && formData.images.length < 3) {
       const newImage = {
@@ -505,74 +699,153 @@ const ProductModal = ({
     }
   };
 
-const handleFileChange = async (e) => {
-  const files = Array.from(e.target.files);
-  const newImages = [];
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files);
+    const newImages = [];
 
-  for (const file of files) {
-    if (formData.images.length + newImages.length < 3) {
-      try {
-        // Compress ảnh xuống 1MB
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true,
-        };
-        const compressedFile = await imageCompression(file, options);
+    for (const file of files) {
+      if (formData.images.length + newImages.length < 3) {
+        try {
+          const options = {
+            maxSizeMB: 1,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+          };
+          const compressedFile = await imageCompression(file, options);
 
-        // Convert compressed file thành base64
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          newImages.push({
-            url: reader.result,
-            preview: reader.result,
-          });
-
-          if (newImages.length === files.length) {
-            setFormData({
-              ...formData,
-              images: [...formData.images, ...newImages],
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            newImages.push({
+              url: reader.result,
+              preview: reader.result,
             });
-          }
-        };
-        reader.readAsDataURL(compressedFile); // ← Dùng file đã compress
-      } catch (error) {
-        console.error("Compress error:", error);
+
+            if (newImages.length === files.length) {
+              setFormData((prev) => ({
+                ...prev,
+                images: [...prev.images, ...newImages],
+              }));
+            }
+          };
+          reader.readAsDataURL(compressedFile);
+        } catch (error) {
+          console.error("Compress error:", error);
+        }
       }
     }
-  }
-};
+  };
 
   const handleRemoveImage = (index) => {
     const updatedImages = formData.images.filter((_, i) => i !== index);
     setFormData({ ...formData, images: updatedImages });
   };
 
+  /* ── VARIANT handlers ── */
+  const handleAddVariant = () => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: [...prev.variants, createEmptyVariant()],
+    }));
+  };
+
+  const handleRemoveVariant = (tempId) => {
+    setFormData((prev) => {
+      if (prev.variants.length <= 1) return prev; // luôn giữ ít nhất 1 biến thể
+      return {
+        ...prev,
+        variants: prev.variants.filter((v) => v._tempId !== tempId),
+      };
+    });
+  };
+
+  const handleVariantFieldChange = (tempId, field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v) =>
+        v._tempId === tempId ? { ...v, [field]: value } : v,
+      ),
+    }));
+  };
+
+  const handleAddAttribute = (tempId) => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v) =>
+        v._tempId === tempId
+          ? { ...v, attributes: [...v.attributes, { key: "", value: "" }] }
+          : v,
+      ),
+    }));
+  };
+
+  const handleRemoveAttribute = (tempId, attrIndex) => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v) => {
+        if (v._tempId !== tempId) return v;
+        const newAttrs = v.attributes.filter((_, i) => i !== attrIndex);
+        // luôn giữ ít nhất 1 dòng attribute để user có thể nhập lại
+        return {
+          ...v,
+          attributes: newAttrs.length > 0 ? newAttrs : [{ key: "", value: "" }],
+        };
+      }),
+    }));
+  };
+
+  const handleAttributeChange = (tempId, attrIndex, field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: prev.variants.map((v) => {
+        if (v._tempId !== tempId) return v;
+        const newAttrs = v.attributes.map((a, i) =>
+          i === attrIndex ? { ...a, [field]: value } : a,
+        );
+        return { ...v, attributes: newAttrs };
+      }),
+    }));
+  };
+
+  // Tổng stock hiển thị live trong modal (chỉ để người dùng xem trước —
+  // giá trị THẬT SỰ lưu trong DB luôn được backend tính lại khi save)
+  const totalStockPreview = formData.variants.reduce(
+    (sum, v) => sum + (Number(v.stock) || 0),
+    0,
+  );
+
+  /* ── SUBMIT ── */
   const handleSubmit = () => {
-    if (
-      !formData.name ||
-      !formData.price_cents ||
-      !formData.category ||
-      !formData.brand
-    ) {
-      alert("Vui lòng điền tên, danh mục, thương hiệu và giá!");
+    if (!formData.name || !formData.category || !formData.brand) {
+      alert("Vui lòng điền tên, danh mục và thương hiệu!");
       return;
     }
+
+    const hasInvalidVariant = formData.variants.some(
+      (v) => !v.price_cents || Number(v.price_cents) <= 0,
+    );
+    if (hasInvalidVariant) {
+      alert("Vui lòng nhập giá bán cho tất cả các biến thể!");
+      return;
+    }
+
+    // Chuyển variants từ format UI -> format gửi backend
+    // Lưu ý: KHÔNG gửi field "sku" tự nhập — để backend tự sinh nếu thiếu,
+    // trừ khi đây là biến thể cũ đã có sku sẵn (giữ nguyên để không đổi SKU mỗi lần sửa)
+    const variantsPayload = formData.variants.map((v) => ({
+      ...(v._id ? { _id: v._id } : {}),
+      sku: v.sku || undefined,
+      attributes: attributesArrayToObject(v.attributes),
+      price_cents: Number(v.price_cents) || 0,
+      stock: Number(v.stock) || 0,
+    }));
+
     const payload = {
       name: formData.name,
       categoryId: formData.category,
       brand: formData.brand,
-      price_cents: Number(formData.price_cents),
       description: formData.description,
       images: formData.images.map((img) => ({ imageUrl: img.url })),
-      variants: [
-        {
-          name: formData.variantName || "Default",
-          sku: formData.sku,
-          price_cents: Number(formData.price_cents),
-          stock: Number(formData.stock) || 0,
-        },
-      ],
+      variants: variantsPayload,
     };
     if (formData.id) payload.id = formData.id;
     onSave(payload);
@@ -589,11 +862,9 @@ const handleFileChange = async (e) => {
       scrollable
       backdrop="static"
     >
-      {/* Bootstrap pass-through wrappers — zero padding/border via CSS above */}
       <Modal.Header>
         <Modal.Body>
           <Modal.Footer>
-            {/* ── inject styles ── */}
             <style dangerouslySetInnerHTML={{ __html: MODAL_STYLES }} />
 
             <div className="pmm-root">
@@ -646,7 +917,6 @@ const handleFileChange = async (e) => {
                     {formData.images.length} / 3 ảnh
                   </div>
 
-                  {/* tab pills */}
                   <div className="pmm-pills">
                     <button
                       className={`pmm-pill ${activeTab === "url" ? "on" : ""}`}
@@ -662,7 +932,6 @@ const handleFileChange = async (e) => {
                     </button>
                   </div>
 
-                  {/* tab content */}
                   {activeTab === "url" ? (
                     <div
                       style={{
@@ -746,7 +1015,6 @@ const handleFileChange = async (e) => {
                       </div>
                     </div>
                     <div className="pmm-grid pmm-grid-2">
-                      {/* Danh mục */}
                       <div className="pmm-field">
                         <label className="pmm-lbl">
                           Danh mục
@@ -767,7 +1035,6 @@ const handleFileChange = async (e) => {
                         </select>
                       </div>
 
-                      {/* Thương hiệu */}
                       <div className="pmm-field">
                         <label className="pmm-lbl">
                           Thương hiệu <span className="pmm-req">*</span>
@@ -787,7 +1054,8 @@ const handleFileChange = async (e) => {
                         </select>
                         {availableBrands.length === 0 && (
                           <small className="text-muted d-block mt-2">
-                            Chưa có thương hiệu. Vui lòng thêm thương hiệu trước.
+                            Chưa có thương hiệu. Vui lòng thêm thương hiệu
+                            trước.
                           </small>
                         )}
                       </div>
@@ -796,88 +1064,165 @@ const handleFileChange = async (e) => {
 
                   {/* Section 2: Biến thể */}
                   <div>
-                    <p className="pmm-section-hd">Biến thể & kho hàng</p>
-                    <div className="pmm-grid pmm-grid-2">
-                      <div className="pmm-field">
-                        <label className="pmm-lbl">Mã SKU</label>
-                        <div className="pmm-icon-wrap">
-                          <span className="pmm-icon-pfx">
-                            <FaBarcode />
-                          </span>
-                          <input
-                            className="pmm-inp"
-                            type="text"
-                            name="sku"
-                            value={formData.sku}
-                            onChange={handleChange}
-                            placeholder="VD: SP-001-30G"
-                          />
+                    <p className="pmm-section-hd">
+                      <span>Biến thể & kho hàng</span>
+                      <FaLayerGroup style={{ fontSize: 11, opacity: 0.6 }} />
+                    </p>
+
+                    {formData.variants.map((variant, vIdx) => {
+                      const namePreview = buildVariantNamePreview(
+                        variant.attributes,
+                      );
+                      return (
+                        <div className="pmm-variant-card" key={variant._tempId}>
+                          <div className="pmm-variant-head">
+                            <span className="pmm-variant-tag">
+                              Biến thể #{vIdx + 1}
+                            </span>
+                            <button
+                              className="pmm-variant-del"
+                              onClick={() =>
+                                handleRemoveVariant(variant._tempId)
+                              }
+                              disabled={formData.variants.length <= 1}
+                              title="Xóa biến thể này"
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+
+                          {/* Preview tên ghép từ attributes */}
+                          <div className="pmm-variant-name-preview">
+                            Tên hiển thị:{" "}
+                            <b>{namePreview || "(chưa có thuộc tính nào)"}</b>
+                          </div>
+
+                          {/* Danh sách thuộc tính key-value */}
+                          <div className="pmm-attr-list">
+                            {variant.attributes.map((attr, aIdx) => (
+                              <div className="pmm-attr-row" key={aIdx}>
+                                <input
+                                  className="pmm-attr-inp pmm-attr-key"
+                                  type="text"
+                                  placeholder="Thuộc tính (VD: Màu)"
+                                  value={attr.key}
+                                  onChange={(e) =>
+                                    handleAttributeChange(
+                                      variant._tempId,
+                                      aIdx,
+                                      "key",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                                <input
+                                  className="pmm-attr-inp pmm-attr-val"
+                                  type="text"
+                                  placeholder="Giá trị (VD: Đỏ)"
+                                  value={attr.value}
+                                  onChange={(e) =>
+                                    handleAttributeChange(
+                                      variant._tempId,
+                                      aIdx,
+                                      "value",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                                <button
+                                  className="pmm-attr-del"
+                                  onClick={() =>
+                                    handleRemoveAttribute(variant._tempId, aIdx)
+                                  }
+                                  title="Xóa thuộc tính"
+                                >
+                                  <FaTimes />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+
+                          <button
+                            className="pmm-attr-addbtn"
+                            onClick={() => handleAddAttribute(variant._tempId)}
+                            style={{ marginBottom: 10 }}
+                          >
+                            <FaPlus size={9} /> Thêm thuộc tính
+                          </button>
+
+                          {/* Giá & tồn kho riêng cho biến thể này */}
+                          <div className="pmm-grid pmm-grid-2">
+                            <div className="pmm-field">
+                              <label className="pmm-lbl">
+                                Giá bán (VNĐ) <span className="pmm-req">*</span>
+                              </label>
+                              <div className="pmm-icon-wrap">
+                                <span className="pmm-icon-pfx">
+                                  <FaDollarSign />
+                                </span>
+                                <input
+                                  className="pmm-inp"
+                                  type="number"
+                                  value={variant.price_cents}
+                                  onChange={(e) =>
+                                    handleVariantFieldChange(
+                                      variant._tempId,
+                                      "price_cents",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="0"
+                                />
+                              </div>
+                            </div>
+                            <div className="pmm-field">
+                              <label className="pmm-lbl">Tồn kho</label>
+                              <div className="pmm-icon-wrap">
+                                <span className="pmm-icon-pfx">
+                                  <FaBoxOpen />
+                                </span>
+                                <input
+                                  className="pmm-inp"
+                                  type="number"
+                                  value={variant.stock}
+                                  onChange={(e) =>
+                                    handleVariantFieldChange(
+                                      variant._tempId,
+                                      "stock",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="0"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* SKU: chỉ xem trước, tự sinh ở backend */}
+                          <div style={{ marginTop: 8 }}>
+                            <span className="pmm-sku-preview">
+                              <FaBarcode style={{ marginRight: 4 }} />
+                              SKU: {variant.sku || "Sẽ tự sinh khi lưu"}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="pmm-field">
-                        <label className="pmm-lbl">
-                          Phân loại / Khối lượng
-                        </label>
-                        <div className="pmm-icon-wrap">
-                          <span className="pmm-icon-pfx">
-                            <FaWeightHanging />
-                          </span>
-                          <input
-                            className="pmm-inp"
-                            type="text"
-                            name="variantName"
-                            value={formData.variantName}
-                            onChange={handleChange}
-                            placeholder="VD: 30g, Hộp lớn..."
-                          />
-                        </div>
-                      </div>
+                      );
+                    })}
+
+                    <button
+                      className="pmm-add-variant-btn"
+                      onClick={handleAddVariant}
+                    >
+                      <FaPlus size={11} /> Thêm biến thể (màu sắc, size...)
+                    </button>
+
+                    <div className="pmm-variant-total">
+                      <span>Tổng tồn kho (xem trước)</span>
+                      <b>{totalStockPreview} sản phẩm</b>
                     </div>
                   </div>
 
-                  {/* Section 3: Giá & tồn kho */}
-                  <div>
-                    <p className="pmm-section-hd">Giá & tồn kho</p>
-                    <div className="pmm-grid pmm-grid-2">
-                      <div className="pmm-field">
-                        <label className="pmm-lbl">Tồn kho</label>
-                        <div className="pmm-icon-wrap">
-                          <span className="pmm-icon-pfx">
-                            <FaBoxOpen />
-                          </span>
-                          <input
-                            className="pmm-inp"
-                            type="number"
-                            name="stock"
-                            value={formData.stock}
-                            onChange={handleChange}
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-                      <div className="pmm-field">
-                        <label className="pmm-lbl">
-                          Giá bán (VNĐ)
-                          <span className="pmm-req">*</span>
-                        </label>
-                        <div className="pmm-icon-wrap">
-                          <span className="pmm-icon-pfx">
-                            <FaDollarSign />
-                          </span>
-                          <input
-                            className="pmm-inp"
-                            type="number"
-                            name="price_cents"
-                            value={formData.price_cents}
-                            onChange={handleChange}
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Section 4: Mô tả */}
+                  {/* Section 3: Mô tả */}
                   <div>
                     <p className="pmm-section-hd">Mô tả</p>
                     <div className="pmm-field">
@@ -892,9 +1237,7 @@ const handleFileChange = async (e) => {
                     </div>
                   </div>
                 </div>
-                {/* end pmm-form-col */}
               </div>
-              {/* end pmm-body */}
 
               {/* ════════ FOOTER ════════ */}
               <div className="pmm-footer">
@@ -909,7 +1252,6 @@ const handleFileChange = async (e) => {
                 </button>
               </div>
             </div>
-            {/* end pmm-root */}
           </Modal.Footer>
         </Modal.Body>
       </Modal.Header>

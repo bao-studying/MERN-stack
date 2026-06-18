@@ -499,7 +499,7 @@ const STYLES = `
   }
   .pm-info-val.mono { font-family: var(--pm-mono); }
 
-  /* ── VARIANTS ── */
+  /* ── VARIANTS LIST IN DETAIL PANEL ── */
   .pm-variants-list { display: flex; flex-direction: column; }
   .pm-variant-row {
     display: flex;
@@ -512,6 +512,7 @@ const STYLES = `
   .pm-variant-row:last-child { border-bottom: none; }
   .pm-variant-name { flex: 1; color: var(--pm-text); font-weight: 500; }
   .pm-variant-sku { font-family: var(--pm-mono); color: var(--pm-subtle); font-size: 11px; }
+  .pm-variant-price { font-family: var(--pm-mono); font-weight: 600; color: var(--pm-accent2); white-space: nowrap; }
   .pm-variant-stock { font-family: var(--pm-mono); font-weight: 600; color: var(--pm-text); min-width: 24px; text-align: right; }
 
   /* ── PANEL FOOTER ── */
@@ -596,6 +597,21 @@ const STYLES = `
 `;
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   STOCK HELPER
+   Backend (product.service.js) là nguồn DUY NHẤT tính tổng tồn kho từ variants
+   và trả về field "totalStock" trong mọi response (list, detail, create, update).
+   Hàm dưới chỉ là fallback an toàn cho trường hợp dữ liệu cũ/cache chưa có
+   field này (ví dụ vừa deploy backend mới nhưng frontend đang cache data cũ).
+───────────────────────────────────────────────────────────────────────────── */
+const getProductStock = (item) => {
+  if (typeof item.totalStock === "number") return item.totalStock;
+  if (item.variants?.length > 0) {
+    return item.variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+  }
+  return 0;
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
    DETAIL PANEL  (pure display component — no logic)
 ───────────────────────────────────────────────────────────────────────────── */
 const DetailPanel = ({ product, onEdit, onDelete, onClose }) => {
@@ -614,10 +630,7 @@ const DetailPanel = ({ product, onEdit, onDelete, onClose }) => {
     );
   }
 
-  const currentStock =
-    product.variants?.length > 0
-      ? product.variants.reduce((sum, v) => sum + v.stock, 0)
-      : product.stock || 0;
+  const currentStock = getProductStock(product);
   const isOutOfStock = currentStock <= 0 || product.is_active === false;
 
   return (
@@ -671,7 +684,7 @@ const DetailPanel = ({ product, onEdit, onDelete, onClose }) => {
             </div>
           </div>
           <div className="pm-stat-card">
-            <div className="pm-stat-label">Tồn kho</div>
+            <div className="pm-stat-label">Tổng tồn kho</div>
             <div
               className={`pm-stat-value ${currentStock < 5 ? "orange" : ""}`}
             >
@@ -719,6 +732,29 @@ const DetailPanel = ({ product, onEdit, onDelete, onClose }) => {
             </div>
           )}
         </div>
+
+        {/* Danh sách biến thể (nếu có nhiều hơn 1) */}
+        {product.variants?.length > 1 && (
+          <div className="pm-info-section">
+            <div className="pm-info-section-header">
+              Biến thể ({product.variants.length})
+            </div>
+            <div className="pm-variants-list">
+              {product.variants.map((v) => (
+                <div className="pm-variant-row" key={v._id}>
+                  <span className="pm-variant-name">
+                    {v.name}
+                    {v.sku && <div className="pm-variant-sku">{v.sku}</div>}
+                  </span>
+                  <span className="pm-variant-price">
+                    {v.price_cents?.toLocaleString()} đ
+                  </span>
+                  <span className="pm-variant-stock">{v.stock}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer actions */}
@@ -741,7 +777,7 @@ const DetailPanel = ({ product, onEdit, onDelete, onClose }) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   MAIN COMPONENT  — all logic identical to original, only JSX changed
+   MAIN COMPONENT  — logic giữ nguyên, chỉ đổi cách lấy stock (qua getProductStock)
 ───────────────────────────────────────────────────────────────────────────── */
 const ProductManager = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1041,10 +1077,9 @@ const ProductManager = () => {
                 <tbody>
                   {currentItems.length > 0 ? (
                     currentItems.map((item) => {
-                      const currentStock =
-                        item.variants?.length > 0
-                          ? item.variants.reduce((sum, v) => sum + v.stock, 0)
-                          : item.stock || 0;
+                      // Nguồn tính DUY NHẤT là backend (item.totalStock).
+                      // Hàm getProductStock chỉ fallback khi dữ liệu cũ chưa có field này.
+                      const currentStock = getProductStock(item);
                       const isOutOfStock =
                         currentStock <= 0 || item.is_active === false;
                       const isSelected = selectedProduct?._id === item._id;
@@ -1080,6 +1115,12 @@ const ProductManager = () => {
                                 <div className="pm-prod-name">{item.name}</div>
                                 <div className="pm-prod-sku">
                                   {item.variants?.[0]?.sku || item.sku || "N/A"}
+                                  {item.variants?.length > 1 && (
+                                    <span>
+                                      {" "}
+                                      · {item.variants.length} biến thể
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
