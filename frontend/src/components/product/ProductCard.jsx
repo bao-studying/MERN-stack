@@ -1,19 +1,33 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Card, Badge } from "react-bootstrap";
-import { FaRegHeart, FaEye, FaBolt, FaHeart } from "react-icons/fa";
+import {
+  FaRegHeart,
+  FaEye,
+  FaShoppingCart,
+  FaBolt,
+  FaHeart,
+  FaLayerGroup,
+} from "react-icons/fa";
 import { Link } from "react-router-dom";
 import "../../assets/styles/products.css";
-import AddToCartBtn from "../cart/AddToCartBtn";
 import { useWishlist } from "../../hooks/useWishlist";
 
+/*
+  Thay đổi chính:
+  - Nút "Thêm vào giỏ" giờ mở QuickViewModal thay vì add trực tiếp.
+    Lý do: sản phẩm có biến thể → user cần chọn biến thể trước.
+  - Hiển thị badge số biến thể nếu > 1.
+  - Giữ nguyên 100% logic hover ảnh, wishlist.
+*/
 const ProductCard = ({ product, onQuickView }) => {
   const { isInWishlist, toggleWishlist } = useWishlist();
   const isLiked = isInWishlist(product._id || product.id);
 
-  const [currentImage, setCurrentImage] = useState(product.image || "");
+  const [currentImage, setCurrentImage] = useState(
+    product.images?.[0]?.imageUrl || product.image || "",
+  );
   const [isHovering, setIsHovering] = useState(false);
 
-  // === LOGIC GIỮ NGUYÊN HOÀN TOÀN ===
   const images = useMemo(() => {
     if (
       !product.images ||
@@ -45,9 +59,8 @@ const ProductCard = ({ product, onQuickView }) => {
     if (!isHovering || images.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentImage((prev) => {
-        const currentIndex = images.indexOf(prev);
-        const nextIndex = (currentIndex + 1) % images.length;
-        return images[nextIndex] || images[0];
+        const idx = images.indexOf(prev);
+        return images[(idx + 1) % images.length] || images[0];
       });
     }, 300);
     return () => clearInterval(interval);
@@ -58,19 +71,29 @@ const ProductCard = ({ product, onQuickView }) => {
     toggleWishlist(product);
   };
 
-  // ================== BỐ CỤC MỚI - LUXURY TCG ==================
+  // Mở QuickView để user chọn biến thể trước khi add to cart
+  const handleAddToCart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onQuickView) {
+      onQuickView(product);
+    }
+  };
+
+  const variantCount = product.variants?.length || 0;
+
   return (
     <Card className="h-100 border-0 luxury-product-card overflow-hidden">
-      {/* IMAGE CONTAINER - chiếm phần lớn, sang trọng hơn */}
+      {/* IMAGE CONTAINER */}
       <div
         className="product-img-container position-relative"
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => {
           setIsHovering(false);
-          setCurrentImage(product.image || "");
+          setCurrentImage(product.images?.[0]?.imageUrl || product.image || "");
         }}
       >
-        {/* Sale Badge - thiết kế mới */}
+        {/* Sale Badge */}
         {product.salePrice && (
           <Badge
             bg="danger"
@@ -85,9 +108,39 @@ const ProductCard = ({ product, onQuickView }) => {
           </Badge>
         )}
 
-        {/* Ảnh chính */}
+        {/* Variant count badge */}
+        {variantCount > 1 && (
+          <div
+            className="position-absolute top-0 start-0 m-3"
+            style={{
+              zIndex: 4,
+              marginTop: product.salePrice ? "50px" : undefined,
+            }}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: 10,
+                fontWeight: 700,
+                color: "rgba(255,255,255,.9)",
+                background: "rgba(0,0,0,.45)",
+                backdropFilter: "blur(8px)",
+                borderRadius: 20,
+                padding: "2px 8px",
+                border: "1px solid rgba(255,255,255,.15)",
+              }}
+            >
+              <FaLayerGroup size={8} />
+              {variantCount} loại
+            </span>
+          </div>
+        )}
+
+        {/* Main image */}
         <img
-          src={currentImage || product.image || "/images/placeholder.jpg"}
+          src={currentImage || "/images/placeholder.jpg"}
           alt={product.name}
           className="img-fluid w-100 h-100 object-fit-cover luxury-img"
           style={{ transition: "transform 0.6s ease, opacity 0.4s ease" }}
@@ -96,7 +149,7 @@ const ProductCard = ({ product, onQuickView }) => {
           }}
         />
 
-        {/* Overlay mới - kính mờ + nút tinh tế */}
+        {/* Overlay actions */}
         <div className="card-actions-overlay luxury-overlay">
           <Link
             to={`/product/${product.slug}`}
@@ -108,16 +161,14 @@ const ProductCard = ({ product, onQuickView }) => {
             className="action-btn luxury-btn"
             onClick={(e) => {
               e.preventDefault();
-              onQuickView
-                ? onQuickView(product)
-                : alert("Tính năng xem nhanh đang phát triển!");
+              onQuickView ? onQuickView(product) : null;
             }}
           >
             <FaBolt /> Xem nhanh
           </button>
         </div>
 
-        {/* Wishlist - thiết kế mới (vòng vàng + scale) */}
+        {/* Wishlist */}
         <button
           className="position-absolute top-0 end-0 m-3 wishlist-btn"
           style={{ zIndex: 5 }}
@@ -130,7 +181,7 @@ const ProductCard = ({ product, onQuickView }) => {
           )}
         </button>
 
-        {/* Số ảnh (giữ nguyên) */}
+        {/* Image counter */}
         {images.length > 1 && isHovering && (
           <div className="position-absolute bottom-0 end-0 m-3 px-3 py-1 bg-black bg-opacity-75 text-white rounded-pill small">
             {images.indexOf(currentImage) + 1} / {images.length}
@@ -138,16 +189,16 @@ const ProductCard = ({ product, onQuickView }) => {
         )}
       </div>
 
-      {/* INFO SECTION - bố cục mới gọn gàng, premium */}
+      {/* INFO SECTION */}
       <Card.Body className="p-4 d-flex flex-column">
-        {/* Category - badge vàng sang trọng */}
+        {/* Category */}
         <div className="text-gold small fw-bold text-uppercase mb-2 tracking-widest">
           {typeof product.categoryId === "object" && product.categoryId?.name
             ? product.categoryId.name
             : "Sản phẩm"}
         </div>
 
-        {/* Tên sản phẩm - hover gold */}
+        {/* Tên sản phẩm */}
         <Card.Title className="fs-5 fw-bold mb-3">
           <Link
             to={`/product/${product.slug}`}
@@ -157,29 +208,54 @@ const ProductCard = ({ product, onQuickView }) => {
           </Link>
         </Card.Title>
 
-        {/* Giá - thiết kế mới */}
+        {/* Giá */}
         <div className="mt-auto d-flex align-items-baseline gap-2 mb-3">
           <span className="fw-bold fs-4 text-aler">
             {product.salePrice
               ? product.salePrice.toLocaleString()
-              : product.price.toLocaleString()}{" "}
+              : (
+                  product.price_cents ||
+                  product.price ||
+                  0
+                ).toLocaleString()}{" "}
             đ
           </span>
           {product.salePrice && (
             <span className="text-muted text-decoration-line-through fs-6">
-              {product.price.toLocaleString()} đ
+              {(product.price || 0).toLocaleString()} đ
             </span>
           )}
         </div>
 
-        {/* Nút thêm giỏ - full width, gradient gold */}
-        <AddToCartBtn
-          productId={product.id || product._id}
-          className="w-100 rounded-pill fw-bold py-2.5 luxury-add-btn"
-          variant="outline-light"
+        {/*
+          Nút "Thêm vào giỏ" → mở QuickViewModal để user chọn biến thể
+          (không add trực tiếp vì cần chọn variant trước)
+        */}
+        <button
+          className="w-100 rounded-pill fw-bold luxury-add-btn d-flex align-items-center justify-content-center gap-2"
+          style={{
+            padding: "10px 0",
+            fontSize: 13,
+            letterSpacing: ".04em",
+            border: "1.5px solid rgba(255,255,255,.35)",
+            background: "transparent",
+            color: "#fff",
+            cursor: "pointer",
+            transition: "all .2s",
+          }}
+          onClick={handleAddToCart}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(255,255,255,.12)";
+            e.currentTarget.style.borderColor = "rgba(255,255,255,.6)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "rgba(255,255,255,.35)";
+          }}
         >
-          Thêm vào giỏ
-        </AddToCartBtn>
+          <FaShoppingCart size={13} />
+          {variantCount > 1 ? "Chọn sản phẩm" : "Thêm vào giỏ"}
+        </button>
       </Card.Body>
     </Card>
   );

@@ -229,6 +229,7 @@ const STYLES = `
 /* ─────────────────────────────────────────────────────────────────────────────
    COLUMN CONFIG
 ───────────────────────────────────────────────────────────────────────────── */
+ 
 const COLUMNS = [
   {
     key: "pending",
@@ -260,18 +261,23 @@ const COLUMNS = [
    ORDER CARD
 ───────────────────────────────────────────────────────────────────────────── */
 const OrderCard = ({ order, onView }) => {
-const amount = order.totalAmount_cents
-  ? new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(order.totalAmount_cents)
-  : "N/A";
+  const amount = order.totalAmount_cents
+    ? new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+      }).format(order.totalAmount_cents)
+    : "N/A";
   const date = order.createdAt
     ? new Date(order.createdAt).toLocaleDateString("vi-VN", {
         day: "2-digit",
         month: "2-digit",
       })
     : "—";
+
+  // NEW: tóm tắt sản phẩm/biến thể trong đơn (chỉ hiển thị, không đổi logic)
+  const itemCount = order.items?.length || 0;
+  const firstItem = order.items?.[0];
+  const hasVariant = firstItem?.variantName || firstItem?.sku;
 
   return (
     <div className="om-card" onClick={() => onView(order)}>
@@ -285,6 +291,30 @@ const amount = order.totalAmount_cents
         {order.userId?.name || "Khách vãng lai"}
       </div>
       <div className="om-card-phone">{order.phoneNumber || "—"}</div>
+
+      {/* NEW: dòng tóm tắt sản phẩm / biến thể — chỉ render khi có dữ liệu items */}
+      {itemCount > 0 && (
+        <div
+          style={{
+            fontSize: 11,
+            color: "var(--subtle)",
+            marginBottom: 10,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {firstItem?.name}
+          {hasVariant && (
+            <span style={{ fontFamily: "var(--mono)" }}>
+              {" "}
+              ({firstItem.variantName || firstItem.sku})
+            </span>
+          )}
+          {itemCount > 1 && <span> +{itemCount - 1} sp khác</span>}
+        </div>
+      )}
+
       <div className="om-card-footer">
         <span className="om-card-amount">{amount}</span>
         <span className="om-card-pay">

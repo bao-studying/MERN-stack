@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
   FaMoneyBillWave,
-  FaUniversity,
   FaArrowLeft,
   FaUser,
   FaEnvelope,
@@ -19,6 +18,7 @@ import SepayPaymentModal from "../../components/common/SepayPaymentModal";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../../hooks/useCart";
 import { useAuth } from "../../hooks/useAuth";
+import axiosClient from "../../services/axiosClient";
 import orderApi from "../../services/order.service";
 import userApi from "../../services/user.service";
 import toast from "react-hot-toast";
@@ -50,7 +50,6 @@ const STYLES = `
     overflow-x: hidden;
   }
 
-  /* ── PROGRESS BAR TOP ── */
   .ck-progress {
     position: fixed; top: 0; left: 0; right: 0; z-index: 200;
     height: 3px; background: var(--bd);
@@ -66,7 +65,6 @@ const STYLES = `
     box-shadow: 0 0 8px #e85d24;
   }
 
-  /* ── BLURRED BACKGROUND GRID ── */
   .ck-backdrop {
     position: fixed; inset: 0; z-index: 0;
     background: var(--bg); overflow: hidden;
@@ -89,12 +87,8 @@ const STYLES = `
   .ck-backdrop-info { padding: 8px; }
   .ck-backdrop-name { height: 8px; background: #d6d1cb; border-radius: 2px; margin-bottom: 5px; }
   .ck-backdrop-price { height: 10px; width: 55%; background: #c8c3bc; border-radius: 2px; }
-  .ck-backdrop-dim {
-    position: absolute; inset: 0;
-    background: rgba(245,242,237,.78);
-  }
+  .ck-backdrop-dim { position: absolute; inset: 0; background: rgba(245,242,237,.78); }
 
-  /* ── MODAL WRAPPER ── */
   .ck-modal-wrap {
     position: relative; z-index: 10;
     min-height: 100vh;
@@ -102,7 +96,6 @@ const STYLES = `
     padding: 52px 20px 60px;
   }
 
-  /* ── MODAL CARD ── */
   .ck-modal {
     width: 100%; max-width: 1000px;
     background: var(--surf); border-radius: 22px;
@@ -116,10 +109,9 @@ const STYLES = `
   }
   @keyframes ckModalIn {
     from { opacity:0; transform:translateY(20px) scale(.985); }
-    to   { opacity:1; transform:translateY(0)    scale(1); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
   }
 
-  /* ── MODAL HEADER ── */
   .ck-modal-header {
     padding: 20px 32px 18px;
     border-bottom: 0.5px solid var(--bd);
@@ -136,10 +128,7 @@ const STYLES = `
     color: var(--tx); margin: 0; letter-spacing: -.2px;
   }
 
-  /* ── STEP WIZARD — giữ nguyên bố cục ── */
-  .ck-steps {
-    display: flex; align-items: center;
-  }
+  .ck-steps { display: flex; align-items: center; }
   .ck-step-item {
     display: flex; align-items: center; gap: 6px;
     font-size: 12px; font-weight: 500; color: var(--su); white-space: nowrap;
@@ -157,10 +146,8 @@ const STYLES = `
   .ck-step-line { width: 28px; height: 1px; background: var(--bd); margin: 0 6px; }
   .ck-step-line.active { background: var(--gn); }
 
-  /* ── MODAL BODY 2-col ── */
   .ck-modal-body { display: grid; grid-template-columns: 1fr 350px; }
 
-  /* ── LEFT FORM ── */
   .ck-form-panel {
     padding: 28px 32px; border-right: 0.5px solid var(--bd);
     overflow-y: auto; max-height: calc(100vh - 200px);
@@ -279,17 +266,22 @@ const STYLES = `
   }
   .ck-summary-count { font-size: 11px; font-family: var(--mono); color: var(--mu); font-style: normal; }
 
-  .ck-items-list { max-height: 200px; overflow-y: auto; margin-bottom: 14px; }
+  .ck-items-list { max-height: 240px; overflow-y: auto; margin-bottom: 14px; }
   .ck-items-list::-webkit-scrollbar { width: 2px; }
   .ck-items-list::-webkit-scrollbar-thumb { background: var(--bd); }
 
+  /* ── ORDER ITEM ROW ── */
   .ck-item {
     display: flex; gap: 10px; margin-bottom: 11px;
     padding-bottom: 11px; border-bottom: 0.5px solid var(--bd);
   }
   .ck-item:last-child { border-bottom: none; margin-bottom: 0; }
+
   .ck-item-img-wrap { position: relative; flex-shrink: 0; }
-  .ck-item-img { width: 46px; height: 46px; border-radius: 8px; object-fit: cover; border: 0.5px solid var(--bd); }
+  .ck-item-img {
+    width: 46px; height: 46px; border-radius: 8px;
+    object-fit: cover; border: 0.5px solid var(--bd);
+  }
   .ck-item-qty {
     position: absolute; top: -5px; right: -5px;
     width: 16px; height: 16px; border-radius: 50%;
@@ -297,12 +289,42 @@ const STYLES = `
     font-size: 9px; font-weight: 700; font-family: var(--mono);
     display: flex; align-items: center; justify-content: center;
   }
+
+  .ck-item-info { flex: 1; min-width: 0; }
   .ck-item-name {
-    font-size: 12px; font-weight: 500; color: var(--tx);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;
+    font-size: 12px; font-weight: 600; color: var(--tx);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .ck-item-unit { font-size: 11px; color: var(--mu); font-family: var(--mono); }
-  .ck-item-total { font-size: 12px; font-weight: 600; color: var(--tx); font-family: var(--mono); white-space: nowrap; }
+  .ck-item-unit { font-size: 11px; color: var(--mu); font-family: var(--mono); margin-top: 2px; }
+  .ck-item-total {
+    font-size: 12px; font-weight: 600; color: var(--tx);
+    font-family: var(--mono); white-space: nowrap;
+    align-self: center;
+  }
+
+  /* Variant chips trong checkout summary */
+  .ck-item-variant-chips {
+    display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px;
+  }
+  .ck-item-v-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 9.5px; font-weight: 500;
+    padding: 1px 6px; border-radius: 4px;
+    background: rgba(200,73,12,.06);
+    border: 0.5px solid rgba(200,73,12,.18);
+    color: #c8490c;
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+  .ck-item-v-name {
+    display: inline-block;
+    font-size: 9.5px; font-weight: 600;
+    padding: 1px 7px; border-radius: 20px;
+    background: var(--bg); border: 0.5px solid var(--bd);
+    color: var(--tx); margin-top: 4px;
+    max-width: 140px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
 
   /* Voucher */
   .ck-voucher-lbl {
@@ -339,7 +361,6 @@ const STYLES = `
   }
   .ck-v-rm:hover { color: #dc2626; }
 
-  /* Totals */
   .ck-totals { margin-top: 10px; }
   .ck-total-row {
     display: flex; justify-content: space-between; align-items: center;
@@ -357,7 +378,6 @@ const STYLES = `
   .ck-t-disc  { color: var(--gn); font-weight: 600; font-family: var(--mono); }
   .ck-vat     { font-size: 10px; color: var(--su); text-align: right; margin-top: 1px; }
 
-  /* CTA */
   .ck-cta {
     width: 100%; padding: 13px 20px; border-radius: 12px;
     background: var(--tx); color: #fff;
@@ -381,7 +401,7 @@ const STYLES = `
 `;
 
 /* ─────────────────────────────────────────────────────────────
-   BACKDROP — blurred product grid behind modal
+   BACKDROP
 ───────────────────────────────────────────────────────────── */
 const BackdropGrid = () => (
   <div className="ck-backdrop">
@@ -406,7 +426,58 @@ const BackdropGrid = () => (
 );
 
 /* ─────────────────────────────────────────────────────────────
-   MAIN COMPONENT — 100% logic gốc giữ nguyên
+   KEY HELPER — đồng bộ 100% với CartPage
+   CartPage dùng separator "__" (double underscore):
+     `${pid}__${vid}`
+   Checkout cần parse ngược lại để khớp từng cart item.
+───────────────────────────────────────────────────────────── */
+const buildLineKey = (item) => {
+  const pid =
+    item.productId?._id?.toString() || item.productId?.toString() || "";
+  const vid =
+    item.variant?._id?.toString() || item.variantId?.toString() || "default";
+  return `${pid}__${vid}`;
+};
+
+/* ─────────────────────────────────────────────────────────────
+   VARIANT INFO COMPONENT — hiển thị trong order summary
+───────────────────────────────────────────────────────────── */
+const CheckoutVariantInfo = ({ item }) => {
+  const variant = item.variant;
+  if (!variant) return null;
+
+  const attrs = variant.attributes
+    ? Object.entries(variant.attributes).filter(([, v]) => v)
+    : [];
+
+  const isDefault = !variant.name || variant.name === "Mặc định";
+
+  if (isDefault && attrs.length === 0) return null;
+
+  return (
+    <div>
+      {/* Tên biến thể (nếu không phải "Mặc định") */}
+      {!isDefault && (
+        <div className="ck-item-v-name" title={variant.name}>
+          {variant.name}
+        </div>
+      )}
+      {/* Attributes dạng chip màu cam */}
+      {attrs.length > 0 && (
+        <div className="ck-item-variant-chips">
+          {attrs.map(([key, val]) => (
+            <span key={key} className="ck-item-v-chip">
+              {key}: {val}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────
+   MAIN COMPONENT — 100% logic gốc, chỉ đồng bộ lineKey + variant
 ───────────────────────────────────────────────────────────── */
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -418,7 +489,7 @@ const CheckoutPage = () => {
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState("");
 
-  // ── VOUCHER STATE (GIỮ NGUYÊN) ──────────────────────────────
+  /* ── selectedProductIds từ CartPage là mảng lineKey ("pid__vid") ── */
   const selectedProductIds = useMemo(
     () =>
       Array.isArray(location.state?.selectedProductIds)
@@ -426,11 +497,13 @@ const CheckoutPage = () => {
         : [],
     [location.state],
   );
+
   const cartVoucher = location.state?.appliedVoucher || null;
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [appliedVoucher, setAppliedVoucher] = useState(cartVoucher);
   const [voucherError, setVoucherError] = useState("");
+
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [currentOrderData, setCurrentOrderData] = useState({
     orderNumber: "",
@@ -438,8 +511,8 @@ const CheckoutPage = () => {
     orderId: "",
   });
   const [paymentStatusMessage, setPaymentStatusMessage] = useState("");
-  // ────────────────────────────────────────────────────────────
 
+  /* ── Fetch địa chỉ mới nhất (GIỮ NGUYÊN) ── */
   useEffect(() => {
     const fetchLatestAddresses = async () => {
       try {
@@ -453,7 +526,7 @@ const CheckoutPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- LOGIC ĐỊA CHỈ (GIỮ NGUYÊN) ---
+  /* ── LOGIC ĐỊA CHỈ (GIỮ NGUYÊN) ── */
   const savedAddresses = useMemo(() => user?.addresses || [], [user]);
   const [useNewAddress, setUseNewAddress] = useState(
     savedAddresses.length === 0,
@@ -483,33 +556,47 @@ const CheckoutPage = () => {
     }
   }, [savedAddresses, selectedAddressId]);
 
-  // --- TÍNH TOÁN TIỀN (GIỮ NGUYÊN) ---
+  /* ── TÍNH TOÁN TIỀN — đồng bộ với CartPage lineKey ── */
   const validCartItems = useMemo(() => {
-    const safeItems = cartItems.filter((item) => item.productId);
+    const safeItems = cartItems.filter((item) => item.productId?._id);
     if (selectedProductIds.length === 0) return safeItems;
-    const selectedSet = new Set(selectedProductIds);
-    return safeItems.filter((item) => selectedSet.has(item.productId._id));
+
+    // selectedProductIds là mảng lineKey ("pid__vid") từ CartPage
+    const selectedSet = new Set(
+      selectedProductIds.map((k) => k?.toString().toLowerCase()),
+    );
+
+    return safeItems.filter((item) => {
+      // Tái tạo lineKey theo đúng format CartPage dùng
+      const lineKey = buildLineKey(item).toLowerCase();
+      return selectedSet.has(lineKey);
+    });
   }, [cartItems, selectedProductIds]);
+
+  /* Giá ưu tiên biến thể, fallback về giá sản phẩm */
+  const getItemPrice = (item) =>
+    item.variant?.price_cents ?? item.productId?.price_cents ?? 0;
+
   const subtotal = useMemo(
     () =>
       validCartItems.reduce(
-        (acc, item) => acc + item.productId.price_cents * item.quantity,
+        (acc, item) => acc + getItemPrice(item) * item.quantity,
         0,
       ),
     [validCartItems],
   );
+
   const FREESHIP_THRESHOLD = 300000;
   const SHIPPING_FEE = 30000;
   const isFreeShip = subtotal >= FREESHIP_THRESHOLD;
   const shippingFee = subtotal > 0 && !isFreeShip ? SHIPPING_FEE : 0;
 
-  // ── TÍNH CÓ VOUCHER (GIỮ NGUYÊN) ────────────────────────────
   const discountAmount = appliedVoucher?.discount || 0;
   const effectiveShipping =
     appliedVoucher?.type === "freeship" ? 0 : shippingFee;
   const total = Math.max(0, subtotal + effectiveShipping - discountAmount);
-  // ────────────────────────────────────────────────────────────
 
+  /* Gỡ voucher nếu không còn đủ điều kiện (GIỮ NGUYÊN) */
   useEffect(() => {
     if (!appliedVoucher) return;
     const minOrder = appliedVoucher.minOrder || 0;
@@ -527,7 +614,7 @@ const CheckoutPage = () => {
     }
   }, [appliedVoucher, validCartItems.length, subtotal, discountAmount]);
 
-  // ── ÁP VOUCHER (GIỮ NGUYÊN) ─────────────────────────────────
+  /* ── ÁP VOUCHER (GIỮ NGUYÊN) ── */
   const handleApplyVoucher = async () => {
     if (!voucherCode.trim()) return;
     setVoucherError("");
@@ -562,9 +649,8 @@ const CheckoutPage = () => {
     setVoucherError("");
     toast("Đã xóa voucher", { icon: "🗑️" });
   };
-  // ────────────────────────────────────────────────────────────
 
-  // --- XỬ LÝ ĐẶT HÀNG (GIỮ NGUYÊN) ---
+  /* ── ĐẶT HÀNG — payload gửi backend bao gồm variantId cho từng dòng ── */
   const handlePlaceOrder = async () => {
     if (validCartItems.length === 0) {
       toast.error("Giỏ hàng trống!");
@@ -573,6 +659,7 @@ const CheckoutPage = () => {
     let finalShippingAddress = "";
     let finalPhone = "";
     setLoading(true);
+
     try {
       if (useNewAddress) {
         if (
@@ -608,34 +695,42 @@ const CheckoutPage = () => {
         finalShippingAddress = `${selectedAddr.addressLine}, ${selectedAddr.city}, ${selectedAddr.province}`;
         finalPhone = selectedAddr.phone;
       }
+
       const orderPayload = {
         shippingAddress: finalShippingAddress,
         phoneNumber: finalPhone,
-        note: note,
-        paymentMethod: paymentMethod,
+        note,
+        paymentMethod,
+        // Gửi kèm thông tin biến thể để backend có thể xử lý đúng tồn kho
+        orderItems: validCartItems.map((item) => ({
+          productId: item.productId._id,
+          variantId: item.variant?._id || item.variantId || null,
+          quantity: item.quantity,
+          price_cents: getItemPrice(item),
+        })),
+        // Giữ selectedProductIds để backward compatible với backend cũ
         selectedProductIds: validCartItems.map((item) => item.productId._id),
         ...(appliedVoucher && {
           voucherId: appliedVoucher._id,
           voucherCode: appliedVoucher.code,
-          discountAmount: discountAmount,
+          discountAmount,
         }),
       };
+
       const res = await orderApi.createOrder(orderPayload);
       if (res.success) {
         const order = res.data;
         clearCart();
 
         if (paymentMethod === "sepay") {
-          toast.success(
-            "Đơn hàng Thanh toán online đã được tạo. Vui lòng quét QR để thanh toán.",
-          );
+          toast.success("Đơn hàng đã tạo. Vui lòng quét QR để thanh toán.");
           setCurrentOrderData({
             orderNumber: order.orderNumber,
             totalAmount: order.totalAmount_cents || total,
             orderId: order._id,
           });
           setPaymentStatusMessage(
-            "Đang chờ Hệ Thống xác nhận thanh toán. Đừng đóng cửa sổ này.",
+            "Đang chờ xác nhận thanh toán. Đừng đóng cửa sổ này.",
           );
           setIsPayModalOpen(true);
         } else {
@@ -651,33 +746,30 @@ const CheckoutPage = () => {
     }
   };
 
+  /* ── Guards (GIỮ NGUYÊN) ── */
   useEffect(() => {
     if (!user) navigate("/login");
   }, [user, navigate]);
 
   useEffect(() => {
     if (!isPayModalOpen || !currentOrderData.orderNumber) return;
-
     let pollingId;
     const checkPaymentStatus = async () => {
       try {
         const res = await orderApi.getOrderById(currentOrderData.orderId);
         if (!res.success) {
           setPaymentStatusMessage(
-            "Không thể kiểm tra trạng thái thanh toán. Vui lòng thử lại.",
+            "Không thể kiểm tra thanh toán. Vui lòng thử lại.",
           );
           return;
         }
-
         const foundOrder = res.data;
-
         if (!foundOrder) {
           setPaymentStatusMessage(
-            "Đang chờ Hệ Thống xác nhận. Vui lòng giữ nguyên màn hình.",
+            "Đang chờ xác nhận. Vui lòng giữ nguyên màn hình.",
           );
           return;
         }
-
         if (foundOrder.paymentStatus === "paid") {
           setPaymentStatusMessage(
             "Thanh toán thành công. Đang chuyển hướng...",
@@ -688,18 +780,14 @@ const CheckoutPage = () => {
           }, 300);
           return;
         }
-
         setPaymentStatusMessage(
-          "Đang chờ Hệ Thống xác nhận thanh toán. Đừng đóng cửa sổ này.",
+          "Đang chờ xác nhận thanh toán. Đừng đóng cửa sổ này.",
         );
       } catch (err) {
         console.error("SePay polling error:", err);
-        setPaymentStatusMessage(
-          "Lỗi kết nối, sẽ thử lại tự động trong giây lát...",
-        );
+        setPaymentStatusMessage("Lỗi kết nối, sẽ thử lại tự động...");
       }
     };
-
     checkPaymentStatus();
     pollingId = setInterval(checkPaymentStatus, 5000);
     return () => clearInterval(pollingId);
@@ -710,15 +798,11 @@ const CheckoutPage = () => {
     <div className="ck-root">
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
 
-      {/* Progress bar top */}
       <div className="ck-progress">
         <div className="ck-progress-fill" />
       </div>
-
-      {/* Blurred backdrop */}
       <BackdropGrid />
 
-      {/* 🔥 FIX: Move SepayPaymentModal OUTSIDE ck-modal to render at root level */}
       <SepayPaymentModal
         isOpen={isPayModalOpen}
         onClose={() => setIsPayModalOpen(false)}
@@ -727,18 +811,14 @@ const CheckoutPage = () => {
         statusMessage={paymentStatusMessage}
       />
 
-      {/* Modal wrapper */}
       <div className="ck-modal-wrap">
         <div className="ck-modal">
-          {/* ── HEADER: back + title + step wizard (giữ nguyên vị trí) ── */}
+          {/* ── HEADER ── */}
           <div className="ck-modal-header">
             <Link to="/cart" className="ck-back">
               <FaArrowLeft style={{ fontSize: 11 }} /> Quay lại giỏ hàng
             </Link>
-
             <h1 className="ck-modal-title">Thanh toán</h1>
-
-            {/* STEP WIZARD — giữ nguyên bố cục & vị trí */}
             <div className="ck-steps">
               <div className="ck-step-item completed">
                 <div className="ck-step-count">✓</div>
@@ -761,7 +841,7 @@ const CheckoutPage = () => {
           <div className="ck-modal-body">
             {/* ─── LEFT: FORM ─── */}
             <div className="ck-form-panel">
-              {/* 1. Thông tin giao hàng */}
+              {/* 1. Địa chỉ giao hàng */}
               <div className="ck-section-label">
                 <h2 className="ck-section-title">
                   <div className="ck-section-num">1</div>
@@ -785,7 +865,6 @@ const CheckoutPage = () => {
                   ))}
               </div>
 
-              {/* User info strip */}
               <div className="ck-user-strip">
                 <div className="ck-user-avatar">
                   <FaUser style={{ fontSize: 11 }} />
@@ -800,7 +879,6 @@ const CheckoutPage = () => {
                 <span>{user?.email}</span>
               </div>
 
-              {/* Address list or new address form */}
               {!useNewAddress && savedAddresses.length > 0 ? (
                 <div className="ck-addr-scroll">
                   {savedAddresses.map((addr) => (
@@ -938,7 +1016,6 @@ const CheckoutPage = () => {
                 </div>
               )}
 
-              {/* Note */}
               <div className="ck-field" style={{ marginTop: 12 }}>
                 <label>
                   <FaStickyNote style={{ marginRight: 4, fontSize: 9 }} />
@@ -1005,46 +1082,54 @@ const CheckoutPage = () => {
                 </div>
               </div>
             </div>
-            {/* end form-panel */}
 
             {/* ─── RIGHT: ORDER SUMMARY ─── */}
             <div className="ck-summary-panel">
               <div className="ck-summary-heading">
                 Đơn hàng của bạn
                 <span className="ck-summary-count">
-                  {validCartItems.length} sản phẩm
+                  {validCartItems.length} dòng
                 </span>
               </div>
 
-              {/* Product list */}
+              {/* Danh sách sản phẩm + biến thể */}
               <div className="ck-items-list">
-                {validCartItems.map((item) => (
-                  <div key={item.productId._id} className="ck-item">
-                    <div className="ck-item-img-wrap">
-                      <img
-                        src={
-                          item.productId.images?.[0]?.imageUrl ||
-                          "https://placehold.co/60"
-                        }
-                        alt={item.productId.name}
-                        className="ck-item-img"
-                      />
-                      <div className="ck-item-qty">{item.quantity}</div>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="ck-item-name">{item.productId.name}</div>
-                      <div className="ck-item-unit">
-                        {item.productId.price_cents?.toLocaleString()}đ
+                {validCartItems.map((item) => {
+                  // Key duy nhất: tránh trùng khi cùng product khác variant
+                  const itemKey = buildLineKey(item);
+                  const price = getItemPrice(item);
+
+                  return (
+                    <div key={itemKey} className="ck-item">
+                      <div className="ck-item-img-wrap">
+                        <img
+                          src={
+                            item.productId.images?.[0]?.imageUrl ||
+                            "https://placehold.co/46"
+                          }
+                          alt={item.productId.name}
+                          className="ck-item-img"
+                        />
+                        <div className="ck-item-qty">{item.quantity}</div>
+                      </div>
+
+                      <div className="ck-item-info">
+                        <div className="ck-item-name">
+                          {item.productId.name}
+                        </div>
+                        {/* Hiển thị thông tin biến thể (tên + attributes) */}
+                        <CheckoutVariantInfo item={item} />
+                        <div className="ck-item-unit">
+                          {price.toLocaleString("vi-VN")}đ / sp
+                        </div>
+                      </div>
+
+                      <div className="ck-item-total">
+                        {(price * item.quantity).toLocaleString("vi-VN")}đ
                       </div>
                     </div>
-                    <div className="ck-item-total">
-                      {(
-                        item.productId.price_cents * item.quantity
-                      ).toLocaleString()}
-                      đ
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Voucher */}
@@ -1105,7 +1190,7 @@ const CheckoutPage = () => {
                       <span className="ck-v-val">
                         {appliedVoucher.type === "freeship"
                           ? "Freeship"
-                          : `−${discountAmount.toLocaleString()}đ`}
+                          : `−${discountAmount.toLocaleString("vi-VN")}đ`}
                       </span>
                       <button className="ck-v-rm" onClick={handleRemoveVoucher}>
                         <FaTimes size={11} />
@@ -1115,12 +1200,12 @@ const CheckoutPage = () => {
                 )}
               </div>
 
-              {/* Totals */}
+              {/* Tổng tiền */}
               <div className="ck-totals">
                 <div className="ck-total-row">
-                  <span>Tạm tính</span>
+                  <span>Tạm tính ({validCartItems.length} dòng)</span>
                   <span style={{ fontFamily: "var(--mono)", fontWeight: 500 }}>
-                    {subtotal.toLocaleString()}đ
+                    {subtotal.toLocaleString("vi-VN")}đ
                   </span>
                 </div>
                 <div className="ck-total-row">
@@ -1133,7 +1218,7 @@ const CheckoutPage = () => {
                     </span>
                   ) : (
                     <span style={{ fontFamily: "var(--mono)" }}>
-                      {effectiveShipping.toLocaleString()}đ
+                      {effectiveShipping.toLocaleString("vi-VN")}đ
                     </span>
                   )}
                 </div>
@@ -1141,20 +1226,19 @@ const CheckoutPage = () => {
                   <div className="ck-total-row">
                     <span>Giảm giá voucher</span>
                     <span className="ck-t-disc">
-                      −{discountAmount.toLocaleString()}đ
+                      −{discountAmount.toLocaleString("vi-VN")}đ
                     </span>
                   </div>
                 )}
                 <div className="ck-total-row main">
                   <span>Tổng cộng</span>
-                  <div style={{ textAlign: "right" }}>
-                    <div className="ck-t-val">{total.toLocaleString()} đ</div>
+                  <div className="ck-t-val">
+                    {total.toLocaleString("vi-VN")} đ
                   </div>
                 </div>
                 <div className="ck-vat">(Đã bao gồm VAT)</div>
               </div>
 
-              {/* Place order */}
               <button
                 className="ck-cta"
                 onClick={handlePlaceOrder}
@@ -1166,13 +1250,9 @@ const CheckoutPage = () => {
                 Bằng cách đặt hàng, bạn đồng ý với điều khoản dịch vụ
               </div>
             </div>
-            {/* end summary-panel */}
           </div>
-          {/* end modal-body */}
         </div>
-        {/* end modal */}
       </div>
-      {/* end modal-wrap */}
     </div>
   );
 };

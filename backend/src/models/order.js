@@ -5,11 +5,14 @@ const { Schema } = mongoose;
 const OrderItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
-    // --- SNAPSHOT: Lưu cứng thông tin tại thời điểm mua ---
     name: { type: String, required: true },
     price_cents: { type: Number, required: true },
     image: String,
-    // -----------------------------------------------------
+    // --- NEW: snapshot biến thể đã mua ---
+    variantId: { type: Schema.Types.ObjectId, default: null },
+    variantName: { type: String, default: "" },
+    sku: { type: String, default: "" },
+    attributes: { type: Schema.Types.Mixed, default: {} },
     quantity: { type: Number, required: true, min: 1 },
   },
   { _id: false },

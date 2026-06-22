@@ -194,19 +194,22 @@ export const handleTelegramWebhook = async (req, res) => {
 
       console.log(`👆 Nút bấm: ${data} từ ${from.first_name}`);
 
+      // ── FIX HIỆU NĂNG: ack ngay lập tức (không text/alert) để Telegram
+      // tắt icon loading trên nút NGAY, không cần chờ xử lý DB xong.
+      // Đây là nguyên nhân chính gây cảm giác "nút chậm".
+      const ackPromise = axios
+        .post(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
+          callback_query_id: callbackQuery.id,
+        })
+        .catch((err) => console.error("⚠️ Lỗi ack callback:", err.message));
+
       // ✅ DUYỆT ĐƠN HÀNG
       if (data.startsWith("approve_")) {
         const orderId = data.split("_")[1];
 
         if (!mongoose.isValidObjectId(orderId)) {
-          await axios.post(
-            `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`,
-            {
-              callback_query_id: callbackQuery.id,
-              text: "Mã đơn không hợp lệ.",
-              show_alert: true,
-            },
-          );
+          await ackPromise;
+          await sendTelegramMessage(chatId, "⚠️ Mã đơn không hợp lệ.");
           return res.status(200).send("OK");
         }
 
@@ -218,32 +221,38 @@ export const handleTelegramWebhook = async (req, res) => {
           );
 
           if (order) {
-            // Cập nhật tin nhắn cũ
-            await axios.post(
-              `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`,
-              {
-                chat_id: chatId,
-                message_id: messageId,
-                text:
-                  message.text +
-                  "\n\n✅ <b>ĐÃ DUYỆT!</b> (Duyệt bởi: " +
-                  escapeTelegramHtml(from.first_name) +
-                  ")",
-                parse_mode: "HTML",
-              },
-            );
-
-            await sendTelegramMessage(
-              chatId,
-              `✔️ Đơn <code>${order.orderNumber}</code> đã được duyệt!\n` +
-                `Trạng thái: <b>Chuẩn bị giao hàng</b>`,
-              { parse_mode: "HTML" },
-            );
+            // ── FIX: chạy 2 lệnh độc lập SONG SONG thay vì tuần tự
+            // → giảm gần một nửa thời gian phản hồi
+            await Promise.all([
+              ackPromise,
+              axios.post(
+                `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`,
+                {
+                  chat_id: chatId,
+                  message_id: messageId,
+                  text:
+                    message.text +
+                    "\n\n✅ <b>ĐÃ DUYỆT!</b> (Duyệt bởi: " +
+                    escapeTelegramHtml(from.first_name) +
+                    ")",
+                  parse_mode: "HTML",
+                },
+              ),
+              sendTelegramMessage(
+                chatId,
+                `✔️ Đơn <code>${order.orderNumber}</code> đã được duyệt!\n` +
+                  `Trạng thái: <b>Chuẩn bị giao hàng</b>`,
+                { parse_mode: "HTML" },
+              ),
+            ]);
 
             console.log(`✅ Đơn hàng ${order.orderNumber} đã được duyệt`);
+          } else {
+            await ackPromise;
           }
         } catch (err) {
           console.error("❌ Lỗi duyệt đơn:", err.message);
+          await ackPromise;
           await sendTelegramMessage(chatId, "❌ Lỗi duyệt đơn hàng");
         }
       }
@@ -253,14 +262,8 @@ export const handleTelegramWebhook = async (req, res) => {
         const orderId = data.split("_")[1];
 
         if (!mongoose.isValidObjectId(orderId)) {
-          await axios.post(
-            `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`,
-            {
-              callback_query_id: callbackQuery.id,
-              text: "Mã đơn không hợp lệ.",
-              show_alert: true,
-            },
-          );
+          await ackPromise;
+          await sendTelegramMessage(chatId, "⚠️ Mã đơn không hợp lệ.");
           return res.status(200).send("OK");
         }
 
@@ -276,85 +279,100 @@ export const handleTelegramWebhook = async (req, res) => {
           );
 
           if (order) {
-            await axios.post(
-              `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`,
-              {
-                chat_id: chatId,
-                message_id: messageId,
-                text:
-                  message.text +
-                  "\n\n❌ <b>ĐÃ TỪ CHỐI!</b> (Từ chối bởi: " +
-                  escapeTelegramHtml(from.first_name) +
-                  ")",
-                parse_mode: "HTML",
-              },
-            );
-
-            await sendTelegramMessage(
-              chatId,
-              `❌ Đơn <code>${order.orderNumber}</code> đã bị từ chối!`,
-              { parse_mode: "HTML" },
-            );
+            await Promise.all([
+              ackPromise,
+              axios.post(
+                `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`,
+                {
+                  chat_id: chatId,
+                  message_id: messageId,
+                  text:
+                    message.text +
+                    "\n\n❌ <b>ĐÃ TỪ CHỐI!</b> (Từ chối bởi: " +
+                    escapeTelegramHtml(from.first_name) +
+                    ")",
+                  parse_mode: "HTML",
+                },
+              ),
+              sendTelegramMessage(
+                chatId,
+                `❌ Đơn <code>${order.orderNumber}</code> đã bị từ chối!`,
+                { parse_mode: "HTML" },
+              ),
+            ]);
 
             console.log(`❌ Đơn hàng ${order.orderNumber} đã bị từ chối`);
+          } else {
+            await ackPromise;
           }
         } catch (err) {
           console.error("❌ Lỗi từ chối đơn:", err.message);
+          await ackPromise;
         }
       }
 
       // 📋 XEM CHI TIẾT ĐƠN HÀNG
+      // ── FIX GỐC: show_alert giới hạn ~200 ký tự → text dài bị Telegram từ chối
+      // (lỗi 400, im lặng). Đổi sang gửi MESSAGE thường (không giới hạn ký tự
+      // như alert), kèm thông tin biến thể sản phẩm đã mua.
       else if (data.startsWith("detail_")) {
         const orderId = data.split("_")[1];
+        await ackPromise; // tắt loading ngay, không chờ query DB
 
         if (!mongoose.isValidObjectId(orderId)) {
-          await axios.post(
-            `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`,
-            {
-              callback_query_id: callbackQuery.id,
-              text: "Mã đơn không hợp lệ.",
-              show_alert: true,
-            },
-          );
+          await sendTelegramMessage(chatId, "⚠️ Mã đơn không hợp lệ.");
           return res.status(200).send("OK");
         }
 
         try {
           const order = await Order.findById(orderId);
 
-          if (order) {
-            const formatPrice = (price) =>
-              new Intl.NumberFormat("vi-VN").format(price || 0);
-
-            const detailText =
-              `📦 <b>CHI TIẾT ĐƠN HÀNG</b>\n\n` +
-              `🔖 Mã: <code>${escapeTelegramHtml(order.orderNumber)}</code>\n` +
-              `👤 KH: ${escapeTelegramHtml(order.customerName || order.fullName || "Chưa xác định")}\n` +
-              `📱 SĐT: <code>${escapeTelegramHtml(order.phoneNumber || "N/A")}</code>\n` +
-              `📍 ĐC: ${escapeTelegramHtml(order.shippingAddress || "Chưa có")}\n` +
-              `💰 Tổng: <b>${formatPrice(order.totalAmount || order.totalAmount_cents || 0)}đ</b>\n` +
-              `💳 TT: ${escapeTelegramHtml(order.paymentMethod || "COD")}\n` +
-              `⏳ TT: ${escapeTelegramHtml(order.status || "Chờ xử lý")}\n` +
-              `📅 ${new Date(order.createdAt).toLocaleString("vi-VN")}`;
-
-            await axios.post(
-              `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`,
-              {
-                callback_query_id: callbackQuery.id,
-                text: detailText,
-                show_alert: true,
-              },
-            );
+          if (!order) {
+            await sendTelegramMessage(chatId, "⚠️ Không tìm thấy đơn hàng.");
+            return res.status(200).send("OK");
           }
+
+          const formatPrice = (price) =>
+            new Intl.NumberFormat("vi-VN").format(price || 0);
+
+          // NEW: hiển thị kèm biến thể (variantName/sku) đã snapshot trong order
+          const itemsText = (order.items || [])
+            .map((it) => {
+              const variantPart = it.variantName
+                ? ` (${escapeTelegramHtml(it.variantName)})`
+                : "";
+              return (
+                `   • ${escapeTelegramHtml(it.name)}${variantPart} ` +
+                `x${it.quantity} — ${formatPrice(it.price_cents * it.quantity)}đ`
+              );
+            })
+            .join("\n");
+
+          const detailText =
+            `📦 <b>CHI TIẾT ĐƠN HÀNG</b>\n\n` +
+            `🔖 Mã: <code>${escapeTelegramHtml(order.orderNumber)}</code>\n` +
+            `👤 KH: ${escapeTelegramHtml(order.customerName || order.fullName || "Chưa xác định")}\n` +
+            `📱 SĐT: <code>${escapeTelegramHtml(order.phoneNumber || "N/A")}</code>\n` +
+            `📍 ĐC: ${escapeTelegramHtml(order.shippingAddress || "Chưa có")}\n` +
+            (itemsText ? `\n🛍 <b>Sản phẩm:</b>\n${itemsText}\n` : "") +
+            `\n💰 Tổng: <b>${formatPrice(order.totalAmount || order.totalAmount_cents || 0)}đ</b>\n` +
+            `💳 TT: ${escapeTelegramHtml(order.paymentMethod || "COD")}\n` +
+            `⏳ Trạng thái: ${escapeTelegramHtml(order.status || "Chờ xử lý")}\n` +
+            `📅 ${new Date(order.createdAt).toLocaleString("vi-VN")}`;
+
+          await sendTelegramMessage(chatId, detailText, { parse_mode: "HTML" });
         } catch (err) {
           console.error("❌ Lỗi lấy chi tiết:", err.message);
+          await sendTelegramMessage(chatId, "❌ Lỗi lấy chi tiết đơn hàng");
         }
+      } else {
+        await ackPromise;
       }
 
       return res.status(200).send("OK");
     }
 
-    // 2️⃣ XỬ LÝ TIN NHẮN TEXT
+    // 2️⃣ XỬ LÝ TIN NHẮN TEXT — GIỮ NGUYÊN 100%, không đổi gì
     if (req.body.message?.text) {
       const chatId = req.body.message.chat.id;
       const userText = req.body.message.text.trim();
@@ -363,7 +381,6 @@ export const handleTelegramWebhook = async (req, res) => {
 
       console.log(`💬 Tin nhắn từ ${firstName}: ${userText}`);
 
-      // 🔑 LỆNH /START
       if (userText === "/start") {
         await axios.post(
           `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
@@ -378,10 +395,7 @@ export const handleTelegramWebhook = async (req, res) => {
             parse_mode: "HTML",
           },
         );
-      }
-
-      // 📊 LỆNH /STATS - Xem thống kê
-      else if (userText === "/stats") {
+      } else if (userText === "/stats") {
         try {
           const totalOrders = await Order.countDocuments();
           const pendingOrders = await Order.countDocuments({
@@ -406,10 +420,7 @@ export const handleTelegramWebhook = async (req, res) => {
           console.error("❌ Lỗi lấy stats:", err.message);
           await sendTelegramMessage(chatId, "❌ Lỗi lấy thống kê");
         }
-      }
-
-      // 📋 LỆNH /PENDING - Lấy danh sách chờ duyệt
-      else if (userText === "/pending") {
+      } else if (userText === "/pending") {
         try {
           const pendingOrders = await Order.find({ status: "pending" })
             .sort({ createdAt: -1 })
@@ -431,7 +442,6 @@ export const handleTelegramWebhook = async (req, res) => {
               `   📱 ${order.phoneNumber}\n\n`;
           });
 
-          // Chia nhỏ tin nhắn nếu quá dài (Telegram limit 4096 ký tự)
           if (text.length > 4000) {
             const chunks = text.match(/[\s\S]{1,4000}/g) || [];
             for (const chunk of chunks) {
@@ -444,10 +454,7 @@ export const handleTelegramWebhook = async (req, res) => {
           console.error("❌ Lỗi lấy danh sách:", err.message);
           await sendTelegramMessage(chatId, "❌ Lỗi lấy danh sách");
         }
-      }
-
-      // ❓ LỆNH /HELP - Trợ giúp
-      else if (userText === "/help") {
+      } else if (userText === "/help") {
         const helpText =
           `📖 <b>HƯỚNG DẪN LỆNH</b>\n\n` +
           `/start - Lấy mã Chat ID\n` +
@@ -457,13 +464,9 @@ export const handleTelegramWebhook = async (req, res) => {
           `💡 Nhấn nút trên tin nhắn đơn hàng để duyệt hoặc xem chi tiết!`;
 
         await sendTelegramMessage(chatId, helpText, { parse_mode: "HTML" });
-      }
-
-      // ❓ TIN NHẮN KHÔNG HỢP LỆ
-      else {
+      } else {
         const responseText =
           `❓ Lệnh không hợp lệ!\n\n` + `Gõ /help để xem danh sách lệnh`;
-
         await sendTelegramMessage(chatId, responseText, { parse_mode: "HTML" });
       }
     }

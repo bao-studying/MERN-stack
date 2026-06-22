@@ -604,13 +604,14 @@ const STYLES = `
    field này (ví dụ vừa deploy backend mới nhưng frontend đang cache data cũ).
 ───────────────────────────────────────────────────────────────────────────── */
 const getProductStock = (item) => {
-  if (typeof item.totalStock === "number") return item.totalStock;
-  if (item.variants?.length > 0) {
-    return item.variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+  // Nếu có mảng biến thể, ưu tiên tính tổng từ biến thể để phản ánh đúng thay đổi vừa edit
+  if (item && item.variants && item.variants.length > 0) {
+    return item.variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
   }
+  // Nếu không có biến thể mới dùng trường totalStock duy nhất từ backend
+  if (item && typeof item.totalStock === "number") return item.totalStock;
   return 0;
 };
-
 /* ─────────────────────────────────────────────────────────────────────────────
    DETAIL PANEL  (pure display component — no logic)
 ───────────────────────────────────────────────────────────────────────────── */
@@ -734,7 +735,7 @@ const DetailPanel = ({ product, onEdit, onDelete, onClose }) => {
         </div>
 
         {/* Danh sách biến thể (nếu có nhiều hơn 1) */}
-        {product.variants?.length > 1 && (
+        {product.variants?.length > 0 && (
           <div className="pm-info-section">
             <div className="pm-info-section-header">
               Biến thể ({product.variants.length})
@@ -978,7 +979,6 @@ const ProductManager = () => {
     <div className="pm-root animate-fade-in">
       {/* inject styles once */}
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
-
       {/* Page header (outside the split-view card) */}
       <div
         style={{
@@ -1016,7 +1016,6 @@ const ProductManager = () => {
           Thêm mới
         </button>
       </div>
-
       {/* Split-view shell */}
       <div className={`pm-layout`}>
         {/* ──────── LEFT: list pane ──────── */}
@@ -1229,17 +1228,44 @@ const ProductManager = () => {
           )}
         </div>
 
-        {/* ──────── RIGHT: detail panel ──────── */}
-        <div className={`pm-panel ${panelOpen ? "open" : ""}`}>
-          <DetailPanel
-            product={selectedProduct}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onClose={() => setSelectedProduct(null)}
-          />
+        {/* ──────── RIGHT: detail panel (Liquid Glass Edition) ──────── */}
+        <div
+          className={`pm-panel ${panelOpen ? "open" : ""}`}
+          style={{
+            background: "transparent", // Xóa bỏ hoàn toàn vùng nền cũ của pm-panel
+            border: "none",
+            boxShadow: "none",
+          }}
+        >
+          {/* Khối Liquid Glass bao bọc có tính năng cuộn nội dung */}
+          <div
+            className="w-full h-full p-6 flex flex-col overflow-y-auto border border-white/40 transition-all duration-300 animate-[fadeIn_0.2s_ease-out]"
+            style={{
+              background: "rgba(255, 255, 255, 0.75)",
+              boxShadow: "-16px 0 48px rgba(15, 23, 42, 0.08)",
+              backdropFilter: "blur(24px) saturate(180%)",
+              WebkitBackdropFilter: "blur(24px) saturate(180%)",
+              borderRadius: "32px",
+            }}
+          >
+            <DetailPanel
+              product={selectedProduct}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onClose={() => setSelectedProduct(null)}
+            />
+          </div>
         </div>
-      </div>
-
+      </div>{" "}
+      {/* Thẻ đóng của container cha */}
+      {/* Lớp phủ tàng hình toàn màn hình nằm DƯỚI panel nhưng TRÊN nội dung chính 
+          để bắt sự kiện Click ngoài ở bất cứ đâu */}
+      {panelOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-transparent"
+          onClick={() => setSelectedProduct(null)}
+        />
+      )}
       {/* MODAL — unchanged */}
       <ProductModal
         key={editingProduct ? editingProduct._id : "create-new"}

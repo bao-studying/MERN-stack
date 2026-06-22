@@ -194,50 +194,84 @@ const getEmailHtml = async (status, order, userName) => {
 
 /* ─────────────────────────────────────────────────────────────────────────────
    CLIENT: TẠO ĐƠN HÀNG
-───────────────────────────────────────────────────────────────────────────── */
-export const createOrderService = async (userId, orderData) => {
+──────*/export const createOrderService = async (userId, orderData) => {
   const cart = await Cart.findOne({ userId });
   if (!cart || cart.items.length === 0) throw new Error("Giỏ hàng trống");
 
-  const { voucherId, discountAmount = 0, selectedProductIds = [] } = orderData;
+  const { voucherId, discountAmount = 0, selectedProductIds = [], orderItems: orderItemsPayload = [] } = orderData;
   const user = await User.findById(userId);
   const customerName =
     orderData.customerName || user?.name || user?.email || "Khách hàng";
+
+  // ── NEW: ưu tiên khớp theo cặp (productId + variantId) từ orderItemsPayload ──
+  // nếu frontend gửi orderItems (đã có variantId từng dòng) thì dùng nó để xác định
+  // chính xác dòng cart nào được chọn (tránh nhầm khi 1 product có nhiều biến thể trong cart)
+  const usePayloadKeys = Array.isArray(orderItemsPayload) && orderItemsPayload.length > 0;
+  const payloadKeySet = new Set(
+    usePayloadKeys
+      ? orderItemsPayload.map(
+          (i) => `${i.productId}__${i.variantId || "default"}`,
+        )
+      : [],
+  );
 
   const selectedIdSet = new Set(
     Array.isArray(selectedProductIds)
       ? selectedProductIds.map((id) => id.toString())
       : [],
   );
-  const checkoutItems =
-    selectedIdSet.size > 0
+
+  const checkoutItems = usePayloadKeys
+    ? cart.items.filter((item) => {
+        const vid = item.variantId ? item.variantId.toString() : "default";
+        return payloadKeySet.has(`${item.productId}__${vid}`);
+      })
+    : selectedIdSet.size > 0
       ? cart.items.filter((item) =>
           selectedIdSet.has(item.productId.toString()),
         )
       : cart.items;
+
   if (checkoutItems.length === 0)
     throw new Error("Không có sản phẩm hợp lệ để thanh toán");
 
   let totalAmount_cents = 0;
   const orderItems = [];
+  // Theo dõi key đã xử lý để xóa đúng dòng cart (productId+variantId), không xóa nhầm dòng khác variant
+  const processedKeys = [];
 
   for (const item of checkoutItems) {
     const product = await Product.findById(item.productId);
     if (!product) throw new Error(`Sản phẩm không tồn tại: ${item.productId}`);
-    const variant = product.variants?.[0];
+
+    // ── NEW: tìm đúng biến thể theo variantId của dòng cart, fallback variant đầu tiên ──
+    const cartVariantId = item.variantId ? item.variantId.toString() : null;
+    const variant = cartVariantId
+      ? product.variants?.find((v) => v._id.toString() === cartVariantId)
+      : product.variants?.[0];
+
     if (!variant) throw new Error(`Sản phẩm ${product.name} lỗi dữ liệu`);
     if (variant.stock < item.quantity)
       throw new Error(`Sản phẩm ${product.name} đã hết hàng`);
+
     variant.stock -= item.quantity;
     await product.save();
+
     orderItems.push({
       productId: product._id,
       name: product.name,
       price_cents: variant.price_cents,
       image: product.images?.[0]?.imageUrl || "",
+      // NEW: snapshot biến thể
+      variantId: variant._id || null,
+      variantName: variant.name || "",
+      sku: variant.sku || "",
+      attributes: variant.attributes || {},
       quantity: item.quantity,
     });
     totalAmount_cents += variant.price_cents * item.quantity;
+
+    processedKeys.push(`${item.productId}__${cartVariantId || "default"}`);
   }
 
   const SHIPPING_FEE = 30000;
@@ -265,14 +299,12 @@ export const createOrderService = async (userId, orderData) => {
     }),
   });
 
-  // Dọn giỏ hàng
-  if (selectedIdSet.size > 0) {
-    cart.items = cart.items.filter(
-      (item) => !selectedIdSet.has(item.productId.toString()),
-    );
-  } else {
-    cart.items = [];
-  }
+  // ── Dọn giỏ hàng — NEW: xóa đúng theo (productId+variantId), không xóa nhầm variant khác cùng product ──
+  const processedKeySet = new Set(processedKeys);
+  cart.items = cart.items.filter((item) => {
+    const vid = item.variantId ? item.variantId.toString() : "default";
+    return !processedKeySet.has(`${item.productId}__${vid}`);
+  });
   await cart.save();
 
   if (voucherId) {
@@ -281,11 +313,10 @@ export const createOrderService = async (userId, orderData) => {
     );
   }
 
-  // ── Gửi email xác nhận đặt hàng ──
+  // ── Gửi email xác nhận đặt hàng ── (GIỮ NGUYÊN, không đổi)
   if (user?.email) {
     (async () => {
       try {
-        // Thử DB template trước
         const dbTemplate = await EmailTemplate.findOne({
           type: "order_confirmation",
           isActive: true,
@@ -317,7 +348,6 @@ export const createOrderService = async (userId, orderData) => {
 
   return newOrder;
 };
-
 /* ─────────────────────────────────────────────────────────────────────────────
    CLIENT: XEM ĐƠN HÀNG
 ───────────────────────────────────────────────────────────────────────────── */

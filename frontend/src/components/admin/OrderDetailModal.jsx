@@ -178,6 +178,32 @@ const STYLES = `
     width: 48px; height: 48px; border-radius: 8px; object-fit: cover;
     border: 0.5px solid #e8e4de; flex-shrink: 0; background: #f5f2ed;
   }
+.od-item-variant {
+  font-size: 10px;
+  color: #a09890;
+  font-family: 'DM Mono', monospace;
+  margin-top: 1px;
+}.od-item-variant {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  color: #c8490c;
+  background: #fff4f0;
+  border: 1px solid rgba(200,73,12,.3);
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-top: 4px;
+  margin-bottom: 2px;
+  letter-spacing: .2px;
+}
+.od-item-variant::before {
+  content: '●';
+  font-size: 7px;
+  color: #c8490c;
+}
   .od-item-name {
     flex: 1; font-size: 12px; font-weight: 600; color: #1c1917;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -482,6 +508,36 @@ const OrderDetailModal = ({ show, handleClose, order, onUpdateStatus }) => {
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="od-item-name">{item.name}</div>
+
+                    {/* NEW: hiển thị biến thể nếu item có variantName/sku — không ảnh hưởng tính tổng */}
+                    {(item.variantName || item.sku) && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        {item.variantName && (
+                          <span className="od-item-variant">
+                            {item.variantName}
+                          </span>
+                        )}
+                        {item.sku && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: "#a09890",
+                              fontFamily: "'DM Mono', monospace",
+                            }}
+                          >
+                            SKU: {item.sku}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     <div className="od-item-qty">
                       {item.price_cents?.toLocaleString("vi-VN")}đ ×{" "}
                       {item.quantity}
