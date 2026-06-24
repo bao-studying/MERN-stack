@@ -15,6 +15,7 @@ import {
   FaTruck,
   FaTimesCircle,
   FaClock,
+  FaChevronRight,
 } from "react-icons/fa";
 import axiosClient from "../../services/axiosClient";
 
@@ -260,6 +261,82 @@ const DRAWER_STYLES = `
     display: flex; align-items: center; justify-content: center;
     padding: 32px; flex: 1;
   }
+    /* ── TAB SẢN PHẨM ── */
+  .cd-prod-card {
+    background: #faf9f7; border: 0.5px solid #e8e4de;
+    border-radius: 10px; margin-bottom: 8px; overflow: hidden;
+    transition: border-color .12s;
+  }
+  .cd-prod-card:hover { border-color: #c8c3bc; }
+  .cd-prod-hd {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; cursor: pointer;
+  }
+  .cd-prod-name { font-size: 12px; font-weight: 600; color: #1c1917; }
+  .cd-prod-variant {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 700; font-family: 'DM Mono', monospace;
+    color: #c8490c; background: #fff4f0; border: 1px solid rgba(200,73,12,.3);
+    padding: 1px 7px; border-radius: 6px; margin-top: 3px;
+  }
+  .cd-prod-meta { margin-left: auto; text-align: right; flex-shrink: 0; }
+  .cd-prod-qty {
+    font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 600;
+    color: #15803d; letter-spacing: -.2px; line-height: 1.1;
+  }
+  .cd-prod-spend { font-size: 10px; color: #a09890; font-family: 'DM Mono', monospace; }
+  .cd-prod-chevron {
+    font-size: 10px; color: #a09890; transition: transform .15s; flex-shrink: 0;
+  }
+  .cd-prod-chevron.open { transform: rotate(90deg); }
+
+  .cd-prod-body {
+    border-top: 0.5px solid #e8e4de; padding: 10px 14px 12px;
+    animation: cdItemIn .18s ease both;
+  }
+  .cd-prod-month {
+    margin-bottom: 8px;
+  }
+  .cd-prod-month:last-child { margin-bottom: 0; }
+  .cd-prod-month-lbl {
+    font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+    color: #a09890; margin-bottom: 5px; display: flex; align-items: center; gap: 6px;
+  }
+  .cd-prod-month-count {
+    font-size: 9px; font-weight: 600; color: #c8490c;
+    background: #fff4f0; padding: 1px 6px; border-radius: 10px;
+  }
+  .cd-prod-purchase {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; padding: 5px 0; border-bottom: 0.5px dashed #f0ece6;
+  }
+  .cd-prod-purchase:last-child { border-bottom: none; }
+  .cd-prod-purchase-date { color: #6b6560; font-family: 'DM Mono', monospace; font-size: 10px; }
+  .cd-prod-purchase-qty { font-weight: 600; color: #1c1917; }
+  .cd-prod-purchase-order {
+    font-size: 9px; color: #a09890; font-family: 'DM Mono', monospace;
+  }
+    .cd-prod-showmore {
+    width: 100%; margin-top: 6px; padding: 7px;
+    border-radius: 8px; border: 1px dashed #e8e4de;
+    background: #fff; font-size: 11px; font-weight: 600;
+    color: #c8490c; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    transition: background .12s, border-color .12s;
+  }
+  .cd-prod-showmore:hover {
+    background: #fff4f0; border-color: rgba(200,73,12,.3);
+  }
+    .cd-month-filter {
+    width: 100%; padding: 9px 30px 9px 12px;
+    border: 1px solid #e8e4de; border-radius: 9px;
+    font-size: 12px; font-weight: 600; color: #1c1917;
+    background: #faf9f7;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0l4.5 6L9 0z' fill='%23a09890'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    appearance: none; outline: none; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    transition: border-color .12s;
+  }
+  .cd-month-filter:focus { border-color: #c8490c; }
 `;
 
 /* ─────────────────────────────────────────────────────────────
@@ -275,21 +352,23 @@ const ORDER_STATUS_MAP = {
 /* ─────────────────────────────────────────────────────────────
    COMPONENT
 ───────────────────────────────────────────────────────────── */
-const CustomerDetailModal = ({
-  show,
-  handleClose,
-  customer,
-  handleToggleStatus,
-}) => {
+const CustomerDetailModal = ({ show, handleClose, customer, handleToggleStatus }) => {
   const [tab, setTab] = useState("info");
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [expandedProduct, setExpandedProduct] = useState(null);
+  const [visibleMonthsMap, setVisibleMonthsMap] = useState({});
+  const [selectedMonth, setSelectedMonth] = useState("all");
+
+  
 
   // Fetch orders khi mở drawer
   useEffect(() => {
     if (!show || !customer?._id) return;
     setTab("info");
     setOrders([]);
+    setSelectedMonth("all"); 
+
     const fetchOrders = async () => {
       setOrdersLoading(true);
       try {
@@ -309,7 +388,60 @@ const CustomerDetailModal = ({
     fetchOrders();
   }, [show, customer?._id]);
 
-  if (!show || !customer) return null;
+  // ── NEW: Gộp sản phẩm đã mua theo (productId + variantId), chỉ tính đơn delivered ──
+  // Mỗi nhóm: tổng SL, tổng tiền, danh sách lần mua gộp theo tháng
+  const productGroups = React.useMemo(() => {
+    const deliveredOrders = orders.filter((o) => o.status === "delivered");
+    const map = new Map();
+
+    deliveredOrders.forEach((order) => {
+      (order.items || []).forEach((item) => {
+        const pid = item.productId?.toString() || item.productId;
+        const vid = item.variantId ? item.variantId.toString() : "default";
+        const key = `${pid}__${vid}`;
+
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            name: item.name,
+            variantName: item.variantName || "",
+            sku: item.sku || "",
+            totalQty: 0,
+            totalSpend: 0,
+            purchases: [],
+          });
+        }
+        const group = map.get(key);
+        group.totalQty += item.quantity;
+        group.totalSpend += item.price_cents * item.quantity;
+        group.purchases.push({
+          date: order.createdAt,
+          quantity: item.quantity,
+          orderNumber: order.orderNumber || order._id?.slice(-8).toUpperCase(),
+        });
+      });
+    });
+
+    // Sắp xếp giảm dần theo tổng SL mua (sản phẩm mua nhiều nhất lên đầu)
+    return Array.from(map.values()).sort((a, b) => b.totalQty - a.totalQty);
+  }, [orders]);
+  
+  // NEW: Danh sách tất cả tháng có giao dịch (từ mọi sản phẩm), dùng cho dropdown lọc
+  const allAvailableMonths = React.useMemo(() => {
+    const monthSet = new Set();
+    productGroups.forEach((group) => {
+      group.purchases.forEach((p) => {
+        const d = new Date(p.date);
+        monthSet.add(`${d.getMonth() + 1}/${d.getFullYear()}`);
+      });
+    });
+    // Sắp xếp giảm dần theo thời gian (tháng gần nhất lên đầu)
+    return Array.from(monthSet).sort((a, b) => {
+      const [am, ay] = a.split("/").map(Number);
+      const [bm, by] = b.split("/").map(Number);
+      return by - ay || bm - am;
+    });
+  }, [productGroups]);
 
   // Tính KPI từ orders thật
   const totalOrders = orders.length;
@@ -318,6 +450,33 @@ const CustomerDetailModal = ({
   const totalSpend = orders
     .filter((o) => o.status === "delivered")
     .reduce((sum, o) => sum + (o.totalAmount_cents || 0), 0);
+  if (!show || !customer) return null;
+
+  // Gộp purchases của 1 group theo tháng (vd "Tháng 6/2026")
+  const groupPurchasesByMonth = (purchases) => {
+    const map = new Map();
+    purchases
+      .slice()
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .forEach((p) => {
+        const d = new Date(p.date);
+        const monthKey = `${d.getMonth() + 1}/${d.getFullYear()}`;
+        if (!map.has(monthKey)) map.set(monthKey, []);
+        map.get(monthKey).push(p);
+      });
+    return Array.from(map.entries()); // [["6/2026", [...]], ...]
+  };
+  const MONTHS_PER_PAGE = 3;
+
+  const getVisibleMonthsCount = (groupKey) =>
+    visibleMonthsMap[groupKey] || MONTHS_PER_PAGE;
+
+  const handleShowMoreMonths = (groupKey) => {
+    setVisibleMonthsMap((prev) => ({
+      ...prev,
+      [groupKey]: (prev[groupKey] || MONTHS_PER_PAGE) + MONTHS_PER_PAGE,
+    }));
+  };
 
   // Địa chỉ
   const primaryAddr = customer.addresses?.[0];
@@ -428,6 +587,7 @@ const CustomerDetailModal = ({
           {[
             { key: "info", label: "Thông tin" },
             { key: "orders", label: `Đơn hàng (${totalOrders})` },
+            { key: "products", label: `Sản phẩm (${productGroups.length})` },
             {
               key: "addr",
               label: `Địa chỉ (${customer.addresses?.length || 0})`,
@@ -653,6 +813,165 @@ const CustomerDetailModal = ({
               )}
             </div>
           )}
+          {/* TAB: SẢN PHẨM ĐÃ MUA */}
+          {tab === "products" && (
+            <div>
+              {/* NEW: Dropdown lọc theo tháng — áp dụng chung cho tất cả sản phẩm */}
+              {!ordersLoading && allAvailableMonths.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <select
+                    className="cd-month-filter"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                  >
+                    <option value="all">📅 Tất cả thời gian</option>
+                    {allAvailableMonths.map((m) => (
+                      <option key={m} value={m}>
+                        Tháng {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {ordersLoading ? (
+                <div className="cd-loading">
+                  <Spinner animation="border" size="sm" variant="success" />
+                </div>
+              ) : productGroups.length === 0 ? (
+                <div className="cd-empty">
+                  <div className="cd-empty-icon">
+                    <FaBoxOpen />
+                  </div>
+                  <span>Chưa có sản phẩm nào (từ đơn đã hoàn thành)</span>
+                </div>
+              ) : (
+                productGroups
+                  .map((group) => {
+                    const monthGroupsFull = groupPurchasesByMonth(
+                      group.purchases,
+                    );
+
+                    // NEW: Nếu đang lọc theo 1 tháng cụ thể, chỉ giữ lại tháng đó
+                    const monthGroups =
+                      selectedMonth === "all"
+                        ? monthGroupsFull
+                        : monthGroupsFull.filter(
+                            ([month]) => month === selectedMonth,
+                          );
+
+                    // Nếu lọc theo tháng mà sản phẩm này không có giao dịch tháng đó → ẩn luôn
+                    if (selectedMonth !== "all" && monthGroups.length === 0)
+                      return null;
+
+                    // Tính lại tổng SL/tiền theo đúng phạm vi đang lọc (để số liệu khớp với filter)
+                    const filteredQty = monthGroups.reduce(
+                      (sum, [, items]) =>
+                        sum + items.reduce((s, p) => s + p.quantity, 0),
+                      0,
+                    );
+
+                    const isOpen = expandedProduct === group.key;
+                    const visibleCount = getVisibleMonthsCount(group.key);
+                    // Khi đang lọc 1 tháng cụ thể, không cần phân trang "xem thêm" (chỉ có 1 tháng)
+                    const visibleMonths =
+                      selectedMonth === "all"
+                        ? monthGroups.slice(0, visibleCount)
+                        : monthGroups;
+                    const hasMore =
+                      selectedMonth === "all" &&
+                      monthGroups.length > visibleCount;
+
+                    return (
+                      <div key={group.key} className="cd-prod-card">
+                        <div
+                          className="cd-prod-hd"
+                          onClick={() =>
+                            setExpandedProduct(isOpen ? null : group.key)
+                          }
+                        >
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div className="cd-prod-name">{group.name}</div>
+                            {group.variantName && (
+                              <span className="cd-prod-variant">
+                                {group.variantName}
+                              </span>
+                            )}
+                          </div>
+                          <div className="cd-prod-meta">
+                            <div className="cd-prod-qty">
+                              {selectedMonth === "all"
+                                ? group.totalQty
+                                : filteredQty}{" "}
+                              sp
+                            </div>
+                            {selectedMonth === "all" && (
+                              <div className="cd-prod-spend">
+                                {group.totalSpend.toLocaleString("vi-VN")}đ
+                              </div>
+                            )}
+                          </div>
+                          <FaChevronRight
+                            className={`cd-prod-chevron${isOpen ? " open" : ""}`}
+                          />
+                        </div>
+
+                        {isOpen && (
+                          <div className="cd-prod-body">
+                            {visibleMonths.map(([month, items]) => (
+                              <div key={month} className="cd-prod-month">
+                                <div className="cd-prod-month-lbl">
+                                  Tháng {month}
+                                  <span className="cd-prod-month-count">
+                                    {items.length} lần mua
+                                  </span>
+                                </div>
+                                {items.map((p, idx) => (
+                                  <div key={idx} className="cd-prod-purchase">
+                                    <div>
+                                      <div className="cd-prod-purchase-date">
+                                        {new Date(p.date).toLocaleDateString(
+                                          "vi-VN",
+                                          {
+                                            day: "2-digit",
+                                            month: "2-digit",
+                                          },
+                                        )}
+                                      </div>
+                                      <div className="cd-prod-purchase-order">
+                                        #{p.orderNumber}
+                                      </div>
+                                    </div>
+                                    <span className="cd-prod-purchase-qty">
+                                      SL: {p.quantity}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ))}
+
+                            {hasMore && (
+                              <button
+                                className="cd-prod-showmore"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleShowMoreMonths(group.key);
+                                }}
+                              >
+                                Xem thêm ({monthGroups.length - visibleCount}{" "}
+                                tháng còn lại)
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                  .filter(
+                    Boolean,
+                  ) /* loại bỏ null khi sản phẩm không có giao dịch trong tháng đang lọc */
+              )}
+            </div>
+          )}
 
           {/* TAB: ĐỊA CHỈ */}
           {tab === "addr" && (
@@ -714,6 +1033,6 @@ const CustomerDetailModal = ({
       </div>
     </>
   );
-};
+};;;
 
 export default CustomerDetailModal;
