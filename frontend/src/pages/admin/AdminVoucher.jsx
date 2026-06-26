@@ -1,7 +1,7 @@
 /**
  * pages/admin/AdminVoucherManager.jsx
  * Route: /admin/vouchers
- * Sidebar: { path:"/admin/vouchers", label:"Voucher", icon:<FaTicketAlt/>, roles:["admin","manager"] }
+ * Updated with: Search, Filter, Pagination, Edit, Analytics link
  */
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -14,10 +14,14 @@ import {
   FaTag,
   FaShippingFast,
   FaPercent,
-  FaTimes,
+  FaEdit,
+  FaChartBar,
+  FaToggleOn,
+  FaToggleOff,
 } from "react-icons/fa";
 import axiosClient from "../../services/axiosClient";
 import toast from "react-hot-toast";
+import VoucherAnalyticsModal from "../../pages/admin/Voucheranalyticsdashboard";
 
 /* ─────────────────────────── STYLES ─────────────────────────── */
 const STYLES = `
@@ -25,10 +29,10 @@ const STYLES = `
 .avm{--bg:#f5f3ef;--surf:#fff;--bd:#e2ded6;--tx:#1c1917;--mu:#78716c;--su:#a8a29e;--ac:#c8490c;--gn:#15803d;--bl:#1d4ed8;--f:'DM Sans',sans-serif;--m:'DM Mono',monospace;font-family:var(--f);color:var(--tx)}
 
 /* header */
-.avm-ph{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;gap:12px}
+.avm-ph{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap}
 .avm-pt{font-size:20px;font-weight:600;letter-spacing:-.4px;margin:0 0 2px}
 .avm-ps{font-size:13px;color:var(--mu);margin:0}
-.avm-btns{display:flex;gap:8px}
+.avm-btns{display:flex;gap:8px;flex-wrap:wrap}
 
 /* buttons */
 .ab{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:500;font-family:var(--f);cursor:pointer;transition:.15s;border:0.5px solid transparent}
@@ -43,9 +47,18 @@ const STYLES = `
 
 /* stats */
 .avm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+@media(max-width:768px){.avm-stats{grid-template-columns:repeat(2,1fr)}}
 .avm-stat{background:var(--surf);border:0.5px solid var(--bd);border-radius:12px;padding:14px 16px}
 .avm-sl{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--su);margin:0 0 5px}
 .avm-sv{font-size:24px;font-weight:600;font-family:var(--m);color:var(--tx);margin:0}
+
+/* search & filters */
+.avm-filters{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
+.avm-search{position:relative;flex:1;min-width:200px}
+.avm-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--su);font-size:12px;pointer-events:none}
+.avm-sinp{width:100%;padding:8px 12px 8px 30px;border:0.5px solid var(--bd);border-radius:8px;font-size:13px;font-family:var(--f);background:var(--bg);outline:none;transition:border-color .15s}
+.avm-sinp:focus{border-color:var(--ac);background:#fff}
+.avm-fselect{padding:8px 12px;border:0.5px solid var(--bd);border-radius:8px;font-size:13px;font-family:var(--f);background:var(--bg);color:var(--tx);outline:none}
 
 /* table card */
 .avm-tc{background:var(--surf);border:0.5px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:16px}
@@ -73,10 +86,19 @@ const STYLES = `
 .achip-x:hover{color:#dc2626}
 
 /* row actions */
-.racts{display:flex;gap:5px;justify-content:flex-end}
+.racts{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap}
 .ract{width:30px;height:30px;border-radius:7px;border:0.5px solid var(--bd);background:var(--surf);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--su);transition:.12s}
+.ract.ra-analytics:hover{color:#0066cc;border-color:#0066cc;background:#f0f7ff}
+.ract.ra-edit:hover{color:#666;border-color:#ccc;background:#f5f5f5}
 .ract.ra-assign:hover{color:var(--bl);border-color:#93c5fd;background:#eff6ff}
 .ract.ra-del:hover{color:#dc2626;border-color:#fca5a5;background:#fef2f2}
+
+/* pagination */
+.avm-pag{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:16px;flex-wrap:wrap}
+.avm-pagbtn{padding:6px 10px;border:0.5px solid var(--bd);border-radius:6px;background:var(--surf);cursor:pointer;font-size:12px;transition:.1s}
+.avm-pagbtn:hover{background:var(--bg)}
+.avm-pagbtn.active{background:var(--ac);color:#fff;border-color:var(--ac)}
+.avm-pagbtn:disabled{opacity:.5;cursor:not-allowed}
 
 /* empty */
 .avm-empty{padding:48px;text-align:center;color:var(--su);font-size:13px}
@@ -87,7 +109,7 @@ const STYLES = `
 .avm-mo{background:var(--surf);border-radius:16px;border:0.5px solid var(--bd);box-shadow:0 8px 40px rgba(0,0,0,.18);width:100%;max-width:500px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;font-family:var(--f)}
 .avm-mo::-webkit-scrollbar{width:3px}
 .avm-mo::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
-.avm-mo.wide{max-width:560px}
+.avm-mo.wide{max-width:600px}
 .avm-mh{padding:15px 20px;border-bottom:0.5px solid var(--bd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .avm-mt{font-size:14px;font-weight:600;margin:0;letter-spacing:-.2px}
 .avm-mx{width:28px;height:28px;border-radius:7px;border:0.5px solid var(--bd);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--su)}
@@ -101,19 +123,12 @@ const STYLES = `
 .fr{color:var(--ac)}
 .fi,.fs{padding:8px 11px;border:0.5px solid var(--bd);border-radius:8px;font-size:13px;font-family:var(--f);color:var(--tx);background:var(--bg);outline:none;transition:border-color .15s;width:100%}
 .fi:focus,.fs:focus{border-color:var(--ac);background:#fff}
-.fs{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0l4.5 6L9 0z' fill='%2378716c'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
 .fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .fhint{font-size:11px;color:var(--su);margin:2px 0 0}
 .finfo{font-size:12px;color:var(--mu);background:var(--bg);padding:8px 12px;border-radius:8px;border:0.5px solid var(--bd)}
 
-/* assign modal */
-.usearch{position:relative}
-.usearch svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--su);font-size:12px;pointer-events:none}
-.usinp{width:100%;padding:8px 12px 8px 30px;border:0.5px solid var(--bd);border-radius:8px;font-size:13px;font-family:var(--f);color:var(--tx);background:var(--bg);outline:none;transition:border-color .15s}
-.usinp:focus{border-color:var(--ac)}
+/* user list */
 .ulist{display:flex;flex-direction:column;gap:3px;max-height:260px;overflow-y:auto}
-.ulist::-webkit-scrollbar{width:3px}
-.ulist::-webkit-scrollbar-thumb{background:var(--bd)}
 .urow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .1s}
 .urow:hover,.urow.sel{background:var(--bg)}
 .urow.sel{background:#fff8f5}
@@ -127,9 +142,7 @@ const STYLES = `
 @keyframes sp{to{transform:rotate(360deg)}}
 `;
 
-/* ─────────────────────────── HELPERS ────────────────────────── */
 const fmt = (n) => new Intl.NumberFormat("vi-VN").format(n);
-
 const TypeBadge = ({ type }) => {
   if (type === "percent")
     return (
@@ -158,6 +171,8 @@ const EMPTY_FORM = {
   maxDiscount: "",
   minOrder: "1000000",
   expiryDate: "",
+  costToProduce: "",
+  maxBudget: "",
 };
 const EMPTY_GEN = {
   count: "5",
@@ -169,18 +184,26 @@ const EMPTY_GEN = {
   prefix: "POKE",
 };
 
-/* ─────────────────────────── MAIN ───────────────────────────── */
 const AdminVoucherManager = () => {
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
 
-  // modals
-  const [modal, setModal] = useState(null); // "create"|"generate"|"assign"
+  // Filters
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  // Modals
+  const [modal, setModal] = useState(null); // "create"|"edit"|"generate"|"assign"|"detail"
   const [form, setForm] = useState(EMPTY_FORM);
   const [gen, setGen] = useState(EMPTY_GEN);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
-  // assign
+  // Assign
   const [target, setTarget] = useState(null);
   const [eligible, setEligible] = useState([]);
   const [picked, setPicked] = useState([]);
@@ -188,21 +211,39 @@ const AdminVoucherManager = () => {
   const [aload, setAload] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
+  // Detail
+  const [detailVoucher, setDetailVoucher] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
   /* load */
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const r = await axiosClient.get("/vouchers/admin");
-      if (r.success) setVouchers(r.vouchers);
-    } catch {
-      toast.error("Lỗi tải voucher");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (page = 1) => {
+      setLoading(true);
+      try {
+        const r = await axiosClient.get("/vouchers/admin", {
+          params: {
+            search,
+            type: typeFilter,
+            status: statusFilter,
+            page,
+            limit: 20,
+          },
+        });
+        if (r.success) {
+          setVouchers(r.vouchers);
+          setPagination(r.pagination);
+        }
+      } catch {
+        toast.error("Lỗi tải voucher");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [search, typeFilter, statusFilter],
+  );
 
   useEffect(() => {
-    load();
+    load(1);
   }, [load]);
 
   /* stats */
@@ -219,30 +260,78 @@ const AdminVoucherManager = () => {
   );
   const statUsed = vouchers.reduce((s, v) => s + (v.usedBy?.length || 0), 0);
 
-  /* create */
-  const handleCreate = async () => {
+  /* create or update */
+  const handleSave = async () => {
     if (!form.code || !form.description || !form.expiryDate) {
       toast.error("Điền đầy đủ thông tin");
       return;
     }
     setSaving(true);
     try {
-      const r = await axiosClient.post("/vouchers/admin", {
+      const payload = {
         ...form,
         value: Number(form.value) || 0,
         maxDiscount: Number(form.maxDiscount) || 0,
         minOrder: Number(form.minOrder),
-      });
-      if (r.success) {
-        toast.success("Tạo voucher thành công!");
-        setModal(null);
-        setForm(EMPTY_FORM);
-        load();
+        costToProduce: Number(form.costToProduce) || 0,
+        maxBudget: Number(form.maxBudget) || 0,
+      };
+
+      let r;
+      if (editingId) {
+        // Update
+        r = await axiosClient.put(`/vouchers/admin/${editingId}`, payload);
+        if (r.success) {
+          toast.success("Cập nhật voucher thành công!");
+          setModal(null);
+          setEditingId(null);
+          setForm(EMPTY_FORM);
+          load(pagination.page);
+        }
+      } else {
+        // Create
+        r = await axiosClient.post("/vouchers/admin", payload);
+        if (r.success) {
+          toast.success("Tạo voucher thành công!");
+          setModal(null);
+          setForm(EMPTY_FORM);
+          load(1);
+        }
       }
     } catch (e) {
-      toast.error(e.response?.data?.message || "Lỗi tạo voucher");
+      toast.error(e.response?.data?.message || "Lỗi lưu voucher");
     } finally {
       setSaving(false);
+    }
+  };
+
+  /* edit */
+  const handleEdit = (v) => {
+    setEditingId(v._id);
+    setForm({
+      code: v.code,
+      description: v.description,
+      type: v.type,
+      value: String(v.value),
+      maxDiscount: String(v.maxDiscount),
+      minOrder: String(v.minOrder),
+      expiryDate: v.expiryDate.split("T")[0],
+      costToProduce: String(v.costToProduce || 0),
+      maxBudget: String(v.maxBudget || 0),
+    });
+    setModal("create");
+  };
+
+  /* toggle active */
+  const handleToggleActive = async (v) => {
+    try {
+      await axiosClient.put(`/vouchers/admin/${v._id}`, {
+        isActive: !v.isActive,
+      });
+      toast.success(`${!v.isActive ? "Kích hoạt" : "Vô hiệu hóa"} thành công!`);
+      load(pagination.page);
+    } catch {
+      toast.error("Lỗi cập nhật");
     }
   };
 
@@ -267,7 +356,7 @@ const AdminVoucherManager = () => {
         toast.success(`Đã tạo ${r.count} voucher ngẫu nhiên!`);
         setModal(null);
         setGen(EMPTY_GEN);
-        load();
+        load(1);
       }
     } catch (e) {
       toast.error(e.response?.data?.message || "Lỗi tạo hàng loạt");
@@ -282,13 +371,32 @@ const AdminVoucherManager = () => {
     try {
       await axiosClient.delete(`/vouchers/admin/${id}`);
       toast.success("Đã xóa");
-      setVouchers((v) => v.filter((x) => x._id !== id));
+      load(pagination.page);
     } catch {
       toast.error("Lỗi xóa");
     }
   };
 
-  /* open assign */
+  /* detail */
+  const openDetail = async (v) => {
+    setDetailVoucher(v);
+    setDetailLoading(true);
+    setModal("detail");
+    try {
+      const r = await axiosClient.get(
+        `/vouchers/admin/${v._id}/usage-history?page=1&limit=20`,
+      );
+      if (r.success) {
+        setDetailVoucher(r.voucher);
+      }
+    } catch {
+      toast.error("Lỗi tải chi tiết");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  /* assign */
   const openAssign = async (v) => {
     setTarget(v);
     setPicked([]);
@@ -310,7 +418,6 @@ const AdminVoucherManager = () => {
   const togglePick = (id) =>
     setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
 
-  /* assign */
   const handleAssign = async () => {
     if (!picked.length) {
       toast.error("Chọn ít nhất 1 khách");
@@ -324,7 +431,7 @@ const AdminVoucherManager = () => {
       if (r.success) {
         toast.success(`Đã tặng cho ${picked.length} khách!`);
         setModal(null);
-        load();
+        load(pagination.page);
       }
     } catch {
       toast.error("Lỗi tặng voucher");
@@ -333,13 +440,12 @@ const AdminVoucherManager = () => {
     }
   };
 
-  /* revoke */
   const handleRevoke = async (vid, uid, name) => {
     if (!window.confirm(`Thu hồi voucher của ${name}?`)) return;
     try {
       await axiosClient.delete(`/vouchers/admin/${vid}/assign/${uid}`);
       toast.success("Đã thu hồi");
-      load();
+      load(pagination.page);
     } catch {
       toast.error("Lỗi thu hồi");
     }
@@ -353,10 +459,12 @@ const AdminVoucherManager = () => {
 
   const fc = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const gc = (e) => setGen({ ...gen, [e.target.name]: e.target.value });
+
   const closeModal = () => {
     setModal(null);
     setForm(EMPTY_FORM);
     setGen(EMPTY_GEN);
+    setEditingId(null);
   };
 
   /* ─── RENDER ─── */
@@ -368,16 +476,29 @@ const AdminVoucherManager = () => {
       <div className="avm-ph">
         <div>
           <h2 className="avm-pt">Quản Lý Voucher</h2>
-          <p className="avm-ps">{vouchers.length} voucher trong hệ thống</p>
+          <p className="avm-ps">{pagination.total} voucher trong hệ thống</p>
         </div>
         <div className="avm-btns">
+          <button
+            className="ab ab-secondary"
+            onClick={() => setAnalyticsOpen(true)}
+          >
+            <FaChartBar style={{ fontSize: 11 }} /> Analytics
+          </button>
           <button
             className="ab ab-secondary"
             onClick={() => setModal("generate")}
           >
             <FaRandom style={{ fontSize: 11 }} /> Tạo hàng loạt
           </button>
-          <button className="ab ab-primary" onClick={() => setModal("create")}>
+          <button
+            className="ab ab-primary"
+            onClick={() => {
+              setEditingId(null);
+              setForm(EMPTY_FORM);
+              setModal("create");
+            }}
+          >
             <FaPlus style={{ fontSize: 11 }} /> Tạo voucher
           </button>
         </div>
@@ -398,6 +519,39 @@ const AdminVoucherManager = () => {
         ))}
       </div>
 
+      {/* filters */}
+      <div className="avm-filters">
+        <div className="avm-search">
+          <FaSearch />
+          <input
+            className="avm-sinp"
+            placeholder="Tìm mã hoặc mô tả..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <select
+          className="avm-fselect"
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+        >
+          <option value="">Tất cả loại</option>
+          <option value="percent">% Phần trăm</option>
+          <option value="fixed">Số tiền cố định</option>
+          <option value="freeship">Miễn ship</option>
+        </select>
+        <select
+          className="avm-fselect"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="all">Tất cả</option>
+          <option value="active">Đang hoạt động</option>
+          <option value="expired">Hết hạn</option>
+          <option value="inactive">Vô hiệu hóa</option>
+        </select>
+      </div>
+
       {/* table */}
       <div className="avm-tc">
         {loading ? (
@@ -409,111 +563,141 @@ const AdminVoucherManager = () => {
             <div className="avm-empty-icon">
               <FaTicketAlt />
             </div>
-            Chưa có voucher. Hãy tạo mới!
+            Không tìm thấy voucher. Hãy tạo mới!
           </div>
         ) : (
-          <table className="avm-t">
-            <thead>
-              <tr>
-                <th>Mã</th>
-                <th>Mô tả</th>
-                <th>Loại</th>
-                <th>Giảm</th>
-                <th>Min đơn</th>
-                <th>Hết hạn</th>
-                <th>Đã tặng</th>
-                <th style={{ textAlign: "right", paddingRight: 14 }}>•••</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vouchers.map((v) => {
-                const exp = new Date(v.expiryDate) <= now;
-                return (
-                  <tr key={v._id}>
-                    <td>
-                      <span className="vcode">{v.code}</span>
-                    </td>
-                    <td
-                      style={{
-                        maxWidth: 150,
-                        fontSize: 12,
-                        color: "var(--mu)",
-                      }}
-                    >
-                      {v.description}
-                    </td>
-                    <td>
-                      <TypeBadge type={v.type} />
-                    </td>
-                    <td>
-                      <span className="vprice">
-                        {v.type === "freeship"
-                          ? "Miễn ship"
-                          : v.type === "percent"
-                            ? `${v.value}%${v.maxDiscount ? ` ≤${fmt(v.maxDiscount)}đ` : ""}`
-                            : `${fmt(v.value)}đ`}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="vprice">{fmt(v.minOrder)}đ</span>
-                    </td>
-                    <td>
-                      <span className={exp ? "vbad" : "vok"}>
-                        {new Date(v.expiryDate).toLocaleDateString("vi-VN")}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="achips">
-                        {!v.assignedTo?.length && (
-                          <span style={{ fontSize: 11, color: "var(--su)" }}>
-                            Chưa tặng
-                          </span>
-                        )}
-                        {v.assignedTo?.slice(0, 3).map((u) => (
-                          <span key={u._id} className="achip">
-                            {u.name}
-                            <button
-                              className="achip-x"
-                              onClick={() => handleRevoke(v._id, u._id, u.name)}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                        {v.assignedTo?.length > 3 && (
-                          <span className="achip">
-                            +{v.assignedTo.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="racts">
-                        <button
-                          className="ract ra-assign"
-                          title="Tặng cho khách"
-                          onClick={() => openAssign(v)}
-                        >
-                          <FaUserCheck />
-                        </button>
-                        <button
-                          className="ract ra-del"
-                          title="Xóa"
-                          onClick={() => handleDelete(v._id)}
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <>
+            <table className="avm-t">
+              <thead>
+                <tr>
+                  <th>Mã</th>
+                  <th>Loại</th>
+                  <th>Giảm</th>
+                  <th>Min đơn</th>
+                  <th>Hết hạn</th>
+                  <th>Tặng / Dùng</th>
+                  <th style={{ textAlign: "right", paddingRight: 14 }}>•••</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vouchers.map((v) => {
+                  const exp = new Date(v.expiryDate) <= now;
+                  return (
+                    <tr key={v._id}>
+                      <td>
+                        <span className="vcode">{v.code}</span>
+                      </td>
+                      <td>
+                        <TypeBadge type={v.type} />
+                      </td>
+                      <td>
+                        <span className="vprice">
+                          {v.type === "freeship"
+                            ? "Miễn ship"
+                            : v.type === "percent"
+                              ? `${v.value}%${v.maxDiscount ? ` ≤${fmt(v.maxDiscount)}đ` : ""}`
+                              : `${fmt(v.value)}đ`}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="vprice">{fmt(v.minOrder)}đ</span>
+                      </td>
+                      <td>
+                        <span className={exp ? "vbad" : "vok"}>
+                          {new Date(v.expiryDate).toLocaleDateString("vi-VN")}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 12, color: "var(--mu)" }}>
+                        {v.assignedTo?.length || 0} / {v.usedBy?.length || 0}
+                      </td>
+                      <td>
+                        <div className="racts">
+                          <button
+                            className="ract ra-analytics"
+                            title="Chi tiết"
+                            onClick={() => openDetail(v)}
+                          >
+                            <FaChartBar style={{ fontSize: 11 }} />
+                          </button>
+                          <button
+                            className="ract ra-edit"
+                            title="Chỉnh sửa"
+                            onClick={() => handleEdit(v)}
+                          >
+                            <FaEdit style={{ fontSize: 11 }} />
+                          </button>
+                          <button
+                            className="ract"
+                            style={{ fontSize: 14 }}
+                            title={v.isActive ? "Vô hiệu hóa" : "Kích hoạt"}
+                            onClick={() => handleToggleActive(v)}
+                          >
+                            {v.isActive ? <FaToggleOn /> : <FaToggleOff />}
+                          </button>
+                          <button
+                            className="ract ra-assign"
+                            title="Tặng cho khách"
+                            onClick={() => openAssign(v)}
+                          >
+                            <FaUserCheck />
+                          </button>
+                          <button
+                            className="ract ra-del"
+                            title="Xóa"
+                            onClick={() => handleDelete(v._id)}
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* pagination */}
+            {pagination.pages > 1 && (
+              <div className="avm-pag">
+                <button
+                  className="avm-pagbtn"
+                  onClick={() => load(1)}
+                  disabled={pagination.page === 1}
+                >
+                  «
+                </button>
+                {Array.from({ length: pagination.pages }, (_, i) => i + 1)
+                  .filter(
+                    (p) =>
+                      Math.abs(p - pagination.page) <= 1 ||
+                      p === 1 ||
+                      p === pagination.pages,
+                  )
+                  .map((p, i, arr) => (
+                    <React.Fragment key={p}>
+                      {i > 0 && arr[i - 1] !== p - 1 && <span>...</span>}
+                      <button
+                        className={`avm-pagbtn${pagination.page === p ? " active" : ""}`}
+                        onClick={() => load(p)}
+                      >
+                        {p}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                <button
+                  className="avm-pagbtn"
+                  onClick={() => load(pagination.pages)}
+                  disabled={pagination.page === pagination.pages}
+                >
+                  »
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* ── MODAL: CREATE ── */}
+      {/* ── MODAL: CREATE/EDIT ── */}
       {modal === "create" && (
         <div
           className="avm-ov"
@@ -521,7 +705,9 @@ const AdminVoucherManager = () => {
         >
           <div className="avm-mo">
             <div className="avm-mh">
-              <p className="avm-mt">Tạo voucher mới</p>
+              <p className="avm-mt">
+                {editingId ? "Chỉnh sửa" : "Tạo"} voucher
+              </p>
               <button className="avm-mx" onClick={closeModal}>
                 ×
               </button>
@@ -538,6 +724,7 @@ const AdminVoucherManager = () => {
                   onChange={fc}
                   placeholder="VD: POKEMON20"
                   style={{ textTransform: "uppercase" }}
+                  disabled={!!editingId}
                 />
               </div>
               <div className="ff">
@@ -562,6 +749,7 @@ const AdminVoucherManager = () => {
                     name="type"
                     value={form.type}
                     onChange={fc}
+                    disabled={!!editingId}
                   >
                     <option value="percent">% Phần trăm</option>
                     <option value="fixed">Số tiền cố định</option>
@@ -634,6 +822,33 @@ const AdminVoucherManager = () => {
                   />
                 </div>
               </div>
+
+              <div className="fg2">
+                <div className="ff">
+                  <label className="fl">Chi phí tạo (đ)</label>
+                  <input
+                    className="fi"
+                    name="costToProduce"
+                    type="number"
+                    value={form.costToProduce}
+                    onChange={fc}
+                    placeholder="VD: 100000"
+                  />
+                  <span className="fhint">Để tính ROI</span>
+                </div>
+                <div className="ff">
+                  <label className="fl">Budget tối đa (đ)</label>
+                  <input
+                    className="fi"
+                    name="maxBudget"
+                    type="number"
+                    value={form.maxBudget}
+                    onChange={fc}
+                    placeholder="VD: 10000000"
+                  />
+                  <span className="fhint">0 = không giới hạn</span>
+                </div>
+              </div>
             </div>
             <div className="avm-mf">
               <button className="ab ab-ghost" onClick={closeModal}>
@@ -641,16 +856,12 @@ const AdminVoucherManager = () => {
               </button>
               <button
                 className="ab ab-primary"
-                onClick={handleCreate}
+                onClick={handleSave}
                 disabled={saving}
               >
-                {saving ? (
-                  "Đang tạo..."
-                ) : (
-                  <>
-                    <FaPlus style={{ fontSize: 10 }} /> Tạo voucher
-                  </>
-                )}
+                {saving
+                  ? "Đang lưu..."
+                  : `${editingId ? "Cập nhật" : "Tạo"} voucher`}
               </button>
             </div>
           </div>
@@ -791,14 +1002,7 @@ const AdminVoucherManager = () => {
                 onClick={handleGenerate}
                 disabled={saving}
               >
-                {saving ? (
-                  `Đang tạo...`
-                ) : (
-                  <>
-                    <FaRandom style={{ fontSize: 10 }} /> Tạo {gen.count}{" "}
-                    voucher
-                  </>
-                )}
+                {saving ? `Đang tạo...` : `Tạo ${gen.count} voucher`}
               </button>
             </div>
           </div>
@@ -809,7 +1013,7 @@ const AdminVoucherManager = () => {
       {modal === "assign" && target && (
         <div
           className="avm-ov"
-          onClick={(e) => e.target === e.currentTarget && setModal(null)}
+          onClick={(e) => e.target === e.currentTarget && closeModal()}
         >
           <div className="avm-mo">
             <div className="avm-mh">
@@ -819,7 +1023,7 @@ const AdminVoucherManager = () => {
                   {target.code}
                 </span>
               </p>
-              <button className="avm-mx" onClick={() => setModal(null)}>
+              <button className="avm-mx" onClick={closeModal}>
                 ×
               </button>
             </div>
@@ -887,7 +1091,7 @@ const AdminVoucherManager = () => {
               )}
             </div>
             <div className="avm-mf">
-              <button className="ab ab-ghost" onClick={() => setModal(null)}>
+              <button className="ab ab-ghost" onClick={closeModal}>
                 Hủy
               </button>
               <button
@@ -895,14 +1099,59 @@ const AdminVoucherManager = () => {
                 onClick={handleAssign}
                 disabled={assigning || !picked.length}
               >
-                {assigning ? (
-                  "Đang tặng..."
-                ) : (
-                  <>
-                    <FaUserCheck style={{ fontSize: 11 }} /> Tặng (
-                    {picked.length})
-                  </>
-                )}
+                {assigning ? "Đang tặng..." : `Tặng (${picked.length})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Analytics Modal */}
+      <VoucherAnalyticsModal
+        isOpen={analyticsOpen}
+        onClose={() => setAnalyticsOpen(false)}
+      />
+
+      {/* ── MODAL: DETAIL ── */}
+      {modal === "detail" && detailVoucher && (
+        <div
+          className="avm-ov"
+          onClick={(e) => e.target === e.currentTarget && closeModal()}
+        >
+          <div className="avm-mo wide">
+            <div className="avm-mh">
+              <p className="avm-mt">
+                Chi tiết{" "}
+                <span className="vcode" style={{ marginLeft: 6 }}>
+                  {detailVoucher.code}
+                </span>
+              </p>
+              <button className="avm-mx" onClick={closeModal}>
+                ×
+              </button>
+            </div>
+            <div className="avm-mb">
+              {detailLoading ? (
+                <div className="spin" />
+              ) : (
+                <>
+                  <div className="finfo">
+                    <strong>Tổng tiền giảm:</strong>{" "}
+                    {fmt(detailVoucher.stats?.totalRevenueImpact || 0)}đ |
+                    <strong> Lượt dùng:</strong>{" "}
+                    {detailVoucher.stats?.timesUsed || 0} /{" "}
+                    {detailVoucher.assignedTo?.length || 0} |
+                    <strong> Tỷ lệ:</strong>{" "}
+                    {((detailVoucher.stats?.usageRate || 0) * 100).toFixed(1)}%
+                  </div>
+                  <p style={{ fontSize: 12, color: "var(--mu)", margin: 0 }}>
+                    Lịch sử sử dụng sẽ hiển thị ở đây (tích hợp thêm sau)
+                  </p>
+                </>
+              )}
+            </div>
+            <div className="avm-mf">
+              <button className="ab ab-ghost" onClick={closeModal}>
+                Đóng
               </button>
             </div>
           </div>

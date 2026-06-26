@@ -1,23 +1,79 @@
 import Voucher from "../models/voucher.model.js";
+import VoucherUsageLog from "../models/voucherUsageLog.model.js";
 import User from "../models/user.js";
 import Role from "../models/role.js";
+import {
+  markVoucherAsUsed,
+  updateVoucherStats,
+  getAnalyticsData,
+  calculateUserSegment,
+} from "../services/voucher.service.js";
 
 const uid = (req) => req.user?.userId || req.user?.id;
 
-/* ── ADMIN: list all ── */
+/* ────────────────────── ADMIN: list all ────────────────────── */
 export const getAllVouchers = async (req, res, next) => {
   try {
-    const vouchers = await Voucher.find()
+    const {
+      search = "",
+      type = "",
+      status = "all", // all | active | expired | inactive
+      page = 1,
+      limit = 20,
+    } = req.query;
+
+    const now = new Date();
+    let query = {};
+
+    // Search by code hoặc description
+    if (search) {
+      query.$or = [
+        { code: new RegExp(search, "i") },
+        { description: new RegExp(search, "i") },
+      ];
+    }
+
+    // Filter by type
+    if (type) {
+      query.type = type;
+    }
+
+    // Filter by status
+    if (status === "active") {
+      query.isActive = true;
+      query.expiryDate = { $gt: now };
+    } else if (status === "expired") {
+      query.expiryDate = { $lte: now };
+    } else if (status === "inactive") {
+      query.isActive = false;
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Voucher.countDocuments(query);
+
+    const vouchers = await Voucher.find(query)
       .populate("assignedTo", "name email avatarUrl")
       .populate("createdBy", "name")
-      .sort({ createdAt: -1 });
-    res.json({ success: true, vouchers });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    res.json({
+      success: true,
+      vouchers,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit)),
+      },
+    });
   } catch (e) {
     next(e);
   }
 };
 
-/* ── ADMIN: create ── */
+/* ────────────────────── ADMIN: create ────────────────────── */
 export const createVoucher = async (req, res, next) => {
   try {
     const {
@@ -28,6 +84,8 @@ export const createVoucher = async (req, res, next) => {
       maxDiscount,
       minOrder,
       expiryDate,
+      costToProduce = 0,
+      maxBudget = 0,
     } = req.body;
 
     if (minOrder < 1_000_000 || minOrder > 20_000_000)
@@ -43,6 +101,8 @@ export const createVoucher = async (req, res, next) => {
       maxDiscount: Number(maxDiscount) || 0,
       minOrder: Number(minOrder),
       expiryDate: new Date(expiryDate),
+      costToProduce: Number(costToProduce),
+      maxBudget: Number(maxBudget),
       createdBy: uid(req),
     });
 
@@ -54,10 +114,7 @@ export const createVoucher = async (req, res, next) => {
   }
 };
 
-/* ── ADMIN: generate random batch ──
-   Body: { count, type, minOrder_min, minOrder_max, expiryDate }
-   Tạo count mã ngẫu nhiên, minOrder random trong [minOrder_min, minOrder_max]
-*/
+/* ────────────────────── ADMIN: generate random batch ────────────────────── */
 export const generateVouchers = async (req, res, next) => {
   try {
     const {
@@ -69,6 +126,7 @@ export const generateVouchers = async (req, res, next) => {
       minOrder_max = 20_000_000,
       expiryDate,
       prefix = "POKE",
+      costToProduce = 0,
     } = req.body;
 
     if (
@@ -90,8 +148,8 @@ export const generateVouchers = async (req, res, next) => {
       const minOrder =
         Math.round(rand(minOrder_min, minOrder_max) / 100_000) * 100_000;
       let v = 0;
-      if (type === "percent") v = rand(5, 30); // 5–30%
-      if (type === "fixed") v = rand(5, 20) * 50_000; // 250k–1tr
+      if (type === "percent") v = rand(5, 30);
+      if (type === "fixed") v = rand(5, 20) * 50_000;
       docs.push({
         code: randCode(),
         description: `Voucher giảm ${type === "percent" ? `${v}%` : type === "fixed" ? `${v.toLocaleString("vi-VN")}đ` : "miễn ship"} cho đơn từ ${minOrder.toLocaleString("vi-VN")}đ`,
@@ -100,6 +158,7 @@ export const generateVouchers = async (req, res, next) => {
         maxDiscount: Number(maxDiscount),
         minOrder,
         expiryDate: new Date(expiryDate),
+        costToProduce: Number(costToProduce),
         createdBy: uid(req),
       });
     }
@@ -113,7 +172,7 @@ export const generateVouchers = async (req, res, next) => {
   }
 };
 
-/* ── ADMIN: update ── */
+/* ────────────────────── ADMIN: update ────────────────────── */
 export const updateVoucher = async (req, res, next) => {
   try {
     const { minOrder } = req.body;
@@ -135,17 +194,19 @@ export const updateVoucher = async (req, res, next) => {
   }
 };
 
-/* ── ADMIN: delete ── */
+/* ────────────────────── ADMIN: delete ────────────────────── */
 export const deleteVoucher = async (req, res, next) => {
   try {
     await Voucher.findByIdAndDelete(req.params.id);
+    // Cũng xóa logs
+    await VoucherUsageLog.deleteMany({ voucherId: req.params.id });
     res.json({ success: true });
   } catch (e) {
     next(e);
   }
 };
 
-/* ── ADMIN: assign to users ── */
+/* ────────────────────── ADMIN: assign to users ────────────────────── */
 export const assignVoucher = async (req, res, next) => {
   try {
     const { userIds } = req.body;
@@ -159,13 +220,17 @@ export const assignVoucher = async (req, res, next) => {
     ).populate("assignedTo", "name email avatarUrl");
 
     if (!v) return res.status(404).json({ message: "Không tìm thấy voucher" });
+
+    // Update stats
+    await updateVoucherStats(v._id);
+
     res.json({ success: true, voucher: v });
   } catch (e) {
     next(e);
   }
 };
 
-/* ── ADMIN: revoke from one user ── */
+/* ────────────────────── ADMIN: revoke from one user ────────────────────── */
 export const revokeVoucher = async (req, res, next) => {
   try {
     const v = await Voucher.findByIdAndUpdate(
@@ -174,13 +239,17 @@ export const revokeVoucher = async (req, res, next) => {
       { new: true },
     ).populate("assignedTo", "name email avatarUrl");
     if (!v) return res.status(404).json({ message: "Không tìm thấy voucher" });
+
+    // Update stats
+    await updateVoucherStats(v._id);
+
     res.json({ success: true, voucher: v });
   } catch (e) {
     next(e);
   }
 };
 
-/* ── ADMIN: eligible customers for this voucher ── */
+/* ────────────────────── ADMIN: eligible customers for this voucher ────────────────────── */
 export const getEligibleUsers = async (req, res, next) => {
   try {
     const v = await Voucher.findById(req.params.id);
@@ -204,7 +273,147 @@ export const getEligibleUsers = async (req, res, next) => {
   }
 };
 
-/* ── CLIENT: my vouchers ── */
+/* ────────────────────── ADMIN: analytics dashboard ────────────────────── */
+export const getAnalytics = async (req, res, next) => {
+  try {
+    const data = await getAnalyticsData();
+    res.json({ success: true, ...data });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/* ────────────────────── ADMIN: voucher usage history ────────────────────── */
+export const getVoucherUsageHistory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const voucher = await Voucher.findById(id);
+    if (!voucher)
+      return res.status(404).json({ message: "Không tìm thấy voucher" });
+
+    // Get usage logs
+    const logs = await VoucherUsageLog.find({ voucherId: id })
+      .populate("userId", "name email avatarUrl")
+      .sort({ usedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await VoucherUsageLog.countDocuments({ voucherId: id });
+
+    // Stats by segment
+    const logsBySegment = await VoucherUsageLog.aggregate([
+      { $match: { voucherId: id } },
+      {
+        $group: {
+          _id: "$userSegment",
+          count: { $sum: 1 },
+          totalDiscount: { $sum: "$discountAmount" },
+          avgDiscount: { $avg: "$discountAmount" },
+        },
+      },
+    ]);
+
+    res.json({
+      success: true,
+      voucher,
+      logs,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit)),
+      },
+      statistics: {
+        bySegment: logsBySegment,
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/* ────────────────────── ADMIN: list customers by segment ────────────────────── */
+export const getCustomersBySegment = async (req, res, next) => {
+  try {
+    const { segment } = req.params;
+    const valid = ["new", "loyal", "one-time", "at-risk", "high-value"];
+    if (!valid.includes(segment)) {
+      return res.status(400).json({ message: "Segment không hợp lệ" });
+    }
+
+    // Map one-time → oneTime, at-risk → atRisk, high-value → highValue
+    const segmentMap = {
+      "one-time": "oneTime",
+      "at-risk": "atRisk",
+      "high-value": "highValue",
+    };
+    const dbSegment = segmentMap[segment] || segment;
+
+    const logs = await VoucherUsageLog.find({ userSegment: segment })
+      .populate("userId", "name email avatarUrl createdAt")
+      .sort({ usedAt: -1 });
+
+    // Group by user và tính stats
+    const userStats = {};
+    logs.forEach((log) => {
+      const userId = log.userId._id.toString();
+      if (!userStats[userId]) {
+        userStats[userId] = {
+          user: log.userId,
+          usageCount: 0,
+          totalDiscount: 0,
+          lastUsedAt: log.usedAt,
+        };
+      }
+      userStats[userId].usageCount += 1;
+      userStats[userId].totalDiscount += log.discountAmount;
+      userStats[userId].lastUsedAt = new Date(
+        Math.max(new Date(userStats[userId].lastUsedAt), new Date(log.usedAt)),
+      );
+    });
+
+    const customers = Object.values(userStats).sort(
+      (a, b) => b.usageCount - a.usageCount,
+    );
+
+    res.json({ success: true, segment, customers });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/* ────────────────────── INTERNAL: mark used (from order service) ────────────────────── */
+export const markVoucherUsedHandler = async (req, res, next) => {
+  try {
+    const {
+      voucherId,
+      userId,
+      orderId,
+      discountAmount,
+      orderTotal,
+      orderTotalAfter,
+    } = req.body;
+
+    const log = await markVoucherAsUsed(
+      voucherId,
+      userId,
+      orderId,
+      discountAmount,
+      orderTotal,
+      orderTotalAfter,
+    );
+
+    res.json({ success: true, log });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/* ────────────────────── CLIENT: my vouchers ────────────────────── */
 export const getMyVouchers = async (req, res, next) => {
   try {
     const me = uid(req);
@@ -232,7 +441,7 @@ export const getMyVouchers = async (req, res, next) => {
   }
 };
 
-/* ── CLIENT: validate at checkout ── */
+/* ────────────────────── CLIENT: validate at checkout ────────────────────── */
 export const validateVoucher = async (req, res, next) => {
   try {
     const { code, orderAmount } = req.body;
@@ -259,7 +468,6 @@ export const validateVoucher = async (req, res, next) => {
     } else if (v.type === "fixed") {
       discount = v.value;
     }
-    // freeship → discount = 0, xử lý riêng ở checkout
 
     res.json({
       success: true,
@@ -278,7 +486,3 @@ export const validateVoucher = async (req, res, next) => {
     next(e);
   }
 };
-
-/* ── Util: mark used — gọi từ order.service ── */
-export const markVoucherUsed = (voucherId, userId) =>
-  Voucher.findByIdAndUpdate(voucherId, { $addToSet: { usedBy: userId } });

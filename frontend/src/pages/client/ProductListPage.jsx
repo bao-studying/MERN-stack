@@ -186,8 +186,7 @@ const ProductListPage = () => {
     .luxury-page { background: #080808; color: #fff; }
     .hero-banner { 
         height: 400px; 
-        background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://scontent.fsgn5-10.fna.fbcdn.net/v/t39.30808-6/698876329_1427567409173701_9152911063164766816_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=833d8c&_nc_ohc=unxIyEF8NTsQ7kNvwHgC2QS&_nc_oc=AdplUkuYEG47wb9MLvV0O_wIIQo860Pw6Kqp7kIi7pxz23fZtSGgJU0AZUb-bjmmllY&_nc_zt=23&_nc_ht=scontent.fsgn5-10.fna&_nc_gid=Gdtio_ZBe3PvwzkgrYgG8w&_nc_ss=7b2a8&oh=00_Af4S1VYFctoh15XKrD0DiKWfGxx5dC7FW7J-bV65Ftk5Jg&oe=6A0B0BE6');
-        background-attachment: fixed;
+background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('./images/bgprd.jpg');        background-attachment: fixed;
         display: flex; align-items: center; justify-content: center;
         border-bottom: 1px solid #d4af3733;
     }

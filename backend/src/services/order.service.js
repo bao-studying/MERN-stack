@@ -20,9 +20,7 @@ import {
   cancelledStatusTemplate,
   confirmedStatusTemplate,
 } from "../utils/emailTemplates.js";
-import { markVoucherUsed } from "../controllers/voucher.controller.js";
-
-/* ─────────────────────────────────────────────────────────────────────────────
+import { markVoucherAsUsed } from "../services/voucher.service.js"; /* ─────────────────────────────────────────────────────────────────────────────
    HELPER: Render blocks từ DB + thay thế {{biến}} bằng dữ liệu thật
 ───────────────────────────────────────────────────────────────────────────── */
 const renderBlocksToHtml = (blocks = []) => {
@@ -194,11 +192,16 @@ const getEmailHtml = async (status, order, userName) => {
 
 /* ─────────────────────────────────────────────────────────────────────────────
    CLIENT: TẠO ĐƠN HÀNG
-──────*/export const createOrderService = async (userId, orderData) => {
+──────*/ export const createOrderService = async (userId, orderData) => {
   const cart = await Cart.findOne({ userId });
   if (!cart || cart.items.length === 0) throw new Error("Giỏ hàng trống");
 
-  const { voucherId, discountAmount = 0, selectedProductIds = [], orderItems: orderItemsPayload = [] } = orderData;
+  const {
+    voucherId,
+    discountAmount = 0,
+    selectedProductIds = [],
+    orderItems: orderItemsPayload = [],
+  } = orderData;
   const user = await User.findById(userId);
   const customerName =
     orderData.customerName || user?.name || user?.email || "Khách hàng";
@@ -206,7 +209,8 @@ const getEmailHtml = async (status, order, userName) => {
   // ── NEW: ưu tiên khớp theo cặp (productId + variantId) từ orderItemsPayload ──
   // nếu frontend gửi orderItems (đã có variantId từng dòng) thì dùng nó để xác định
   // chính xác dòng cart nào được chọn (tránh nhầm khi 1 product có nhiều biến thể trong cart)
-  const usePayloadKeys = Array.isArray(orderItemsPayload) && orderItemsPayload.length > 0;
+  const usePayloadKeys =
+    Array.isArray(orderItemsPayload) && orderItemsPayload.length > 0;
   const payloadKeySet = new Set(
     usePayloadKeys
       ? orderItemsPayload.map(
@@ -308,7 +312,7 @@ const getEmailHtml = async (status, order, userName) => {
   await cart.save();
 
   if (voucherId) {
-    await markVoucherUsed(voucherId, userId).catch((err) =>
+    await markVoucherAsUsed(voucherId, userId).catch((err) =>
       console.error("⚠️ markVoucherUsed lỗi:", err.message),
     );
   }

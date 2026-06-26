@@ -37,6 +37,8 @@ import AdminMessages from "../../src/pages/admin/AdminMessages";
 import AdminVoucherManager from "../pages/admin/AdminVoucher";
 import EmailBuilder from "../pages/admin/EmailBuilder";
 
+import VoucherAnalyticsDashboard from "../pages/admin/VoucherAnalyticsDashboard"; // ← THÊM DÒng này
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -85,6 +87,11 @@ const AppRoutes = () => {
             <Route path="blogs" element={<BlogManager />} />
           </Route>
           <Route path="vouchers" element={<AdminVoucherManager />} />
+          <Route path="vouchers" element={<AdminVoucherManager />} />
+          <Route
+            path="voucher-analytics"
+            element={<VoucherAnalyticsDashboard />}
+          />
           {/* 3. Quản lý Đơn hàng: Cả 3 đều được vào */}
           <Route
             element={
@@ -94,10 +101,10 @@ const AppRoutes = () => {
             <Route path="orders" element={<OrderManager />} />
             <Route path="messages" element={<AdminMessages />} />
           </Route>
-           <Route
+          <Route
             element={<ProtectedRoute allowedRoles={["admin", "manager"]} />}
           >
-          <Route path="/admin/email-builder" element={<EmailBuilder />} />
+            <Route path="/admin/email-builder" element={<EmailBuilder />} />
           </Route>
 
           {/* 4. Quản lý Khách hàng*/}
