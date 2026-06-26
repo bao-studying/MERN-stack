@@ -36,6 +36,43 @@ import {
 } from "react-icons/fa";
 
 /* ─────────────────────────────────────────────────────────────────
+   🆕 SEGMENT META — khớp đúng enum thật trong backend
+   (new | loyal | one-time | at-risk | high-value)
+───────────────────────────────────────────────────────────────── */
+const SEGMENT_META = {
+  new: { label: "Khách mới", color: "#1d4ed8", bg: "#dbeafe" },
+  loyal: { label: "Thân thiết", color: "#15803d", bg: "#dcfce7" },
+  "one-time": { label: "Mua 1 lần", color: "#a16207", bg: "#fef9c3" },
+  "at-risk": { label: "Có nguy cơ rời", color: "#dc2626", bg: "#fee2e2" },
+  "high-value": { label: "VIP chi tiêu cao", color: "#7e22ce", bg: "#f3e8ff" },
+};
+const SEGMENT_FALLBACK = {
+  label: "Đang phân loại...",
+  color: "#78716c",
+  bg: "#f4f2ee",
+};
+
+const SegmentBadge = ({ segment }) => {
+  const m = SEGMENT_META[segment] || SEGMENT_FALLBACK;
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "3px 10px",
+        borderRadius: 20,
+        fontSize: 11,
+        fontWeight: 600,
+        color: m.color,
+        background: m.bg,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {m.label}
+    </span>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────
    STYLES
 ───────────────────────────────────────────────────────────────── */
 const STYLES = `
@@ -395,7 +432,7 @@ const LogDrawer = ({ user, onClose }) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────
-   MAIN COMPONENT — 100% logic gốc giữ nguyên
+   MAIN COMPONENT
 ───────────────────────────────────────────────────────────────── */
 const CustomerManager = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -432,6 +469,12 @@ const CustomerManager = () => {
   const [totalUsers, setTotalUsers] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+
+  // 🆕 Segment của từng khách hàng — key là userId, value là segment string
+  // Chỉ áp dụng cho trang Khách Hàng (!isStaffView); trang Đội Ngũ giữ nguyên
+  // badge vai trò cũ, không liên quan đến segment.
+  const [segments, setSegments] = useState({});
+  const [segmentsLoading, setSegmentsLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -504,6 +547,34 @@ const CustomerManager = () => {
     const t = setTimeout(() => fetchUsers(), 500);
     return () => clearTimeout(t);
   }, [fetchUsers]);
+
+  // 🆕 Sau khi load xong users (trang Khách Hàng), gọi batch segment 1 lần
+  // cho đúng danh sách userId đang hiển thị trên trang hiện tại.
+  useEffect(() => {
+    if (isStaffView || users.length === 0) {
+      setSegments({});
+      return;
+    }
+
+    const fetchSegments = async () => {
+      setSegmentsLoading(true);
+      try {
+        const userIds = users.map((u) => u._id).filter(Boolean);
+        const res = await axiosClient.post(
+          "/vouchers/admin/users/segments-batch",
+          { userIds },
+        );
+        setSegments(res?.segments || {});
+      } catch (e) {
+        console.error("Lỗi tải phân loại khách hàng:", e);
+        setSegments({});
+      } finally {
+        setSegmentsLoading(false);
+      }
+    };
+
+    fetchSegments();
+  }, [users, isStaffView]);
 
   const handlePageChange = (page) => {
     const p = new URLSearchParams(searchParams);
@@ -696,7 +767,9 @@ const CustomerManager = () => {
             <tr>
               <th className="ps-4">Người Dùng</th>
               <th>Liên Hệ</th>
-              <th>Vai Trò</th>
+              {/* 🆕 Cột "Vai Trò" → "Phân Loại" chỉ cho trang Khách Hàng;
+                  trang Đội Ngũ (isStaffView) giữ nguyên label + badge role cũ */}
+              <th>{isStaffView ? "Vai Trò" : "Phân Loại"}</th>
               <th className="text-center">Ngày Tham Gia</th>
               {!isStaffView && <th className="text-end">Tổng Chi Tiêu</th>}
               <th>Trạng Thái</th>
@@ -744,18 +817,30 @@ const CustomerManager = () => {
                     <small className="text-muted">{user.phone || "N/A"}</small>
                   </td>
                   <td>
-                    <Badge
-                      bg={
-                        user.role?.name === "admin"
-                          ? "dark"
-                          : user.role?.name === "manager"
-                            ? "primary"
-                            : "info"
-                      }
-                      className="text-uppercase"
-                    >
-                      {user.role?.name || "Customer"}
-                    </Badge>
+                    {isStaffView ? (
+                      // Giữ nguyên 100% — badge vai trò cho Đội Ngũ, không đổi gì
+                      <Badge
+                        bg={
+                          user.role?.name === "admin"
+                            ? "dark"
+                            : user.role?.name === "manager"
+                              ? "primary"
+                              : "info"
+                        }
+                        className="text-uppercase"
+                      >
+                        {user.role?.name || "Customer"}
+                      </Badge>
+                    ) : segmentsLoading ? (
+                      <Spinner
+                        animation="border"
+                        size="sm"
+                        variant="secondary"
+                      />
+                    ) : (
+                      // 🆕 Phân loại khách hàng theo segment thật
+                      <SegmentBadge segment={segments[user._id]} />
+                    )}
                   </td>
                   <td className="text-center">
                     {new Date(user.createdAt).toLocaleDateString("vi-VN")}
@@ -774,29 +859,6 @@ const CustomerManager = () => {
                           ? `${user.totalSpend.toLocaleString("vi-VN")}đ`
                           : "—"}
                       </span>
-                      {user.totalSpend >= 50000000 && (
-                        <div
-                          style={{
-                            fontSize: 9,
-                            color: "#b45309",
-                            fontWeight: 700,
-                          }}
-                        >
-                          ⭐ VIP
-                        </div>
-                      )}
-                      {user.totalSpend >= 1000000 &&
-                        user.totalSpend < 5000000 && (
-                          <div
-                            style={{
-                              fontSize: 9,
-                              color: "#15803d",
-                              fontWeight: 700,
-                            }}
-                          >
-                            ✓ Thân thiết
-                          </div>
-                        )}
                     </td>
                   )}
                   <td>

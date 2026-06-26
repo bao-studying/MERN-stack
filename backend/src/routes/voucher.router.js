@@ -14,6 +14,7 @@ import {
   getVoucherUsageHistory,
   getCustomersBySegment,
   markVoucherUsedHandler,
+  getUsersSegmentsBatch,
 } from "../controllers/voucher.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 import { requireRole } from "../middlewares/role.middleware.js";
@@ -43,6 +44,11 @@ router.delete("/admin/:id", admin, deleteVoucher);
 router.post("/admin/:id/assign", admin, assignVoucher);
 router.delete("/admin/:id/assign/:userId", admin, revokeVoucher);
 router.get("/admin/:id/eligible-users", admin, getEligibleUsers);
+
+// 🆕 FIX: dùng đúng "admin" (đã định nghĩa ở trên bằng requireRole),
+// không phải "auth, isAdmin" (2 biến này không tồn tại/không được import
+// trong file này → route trước đó không hoạt động, khiến request luôn fail).
+router.post("/admin/users/segments-batch", admin, getUsersSegmentsBatch);
 
 // 📊 ANALYTICS (NEW)
 router.get("/admin/dashboard/analytics", admin, getAnalytics);

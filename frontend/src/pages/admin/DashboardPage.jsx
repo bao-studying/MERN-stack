@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Badge, Spinner, Alert, Form, Button } from "react-bootstrap";
 import {
   FaShoppingBag,
@@ -9,6 +10,9 @@ import {
   FaArrowUp,
   FaArrowDown,
   FaCalendarAlt,
+  FaExclamationTriangle,
+  FaClock,
+  FaArrowRight,
 } from "react-icons/fa";
 import {
   AreaChart,
@@ -25,9 +29,8 @@ import {
 } from "recharts";
 import { useAdminTheme } from "../../context/useAdminTheme";
 import orderApi from "../../services/order.service";
+import axiosClient from "../../services/axiosClient";
 import "../../assets/styles/admin.css";
-
-// Thêm icon này vào chỗ import react-icons:
 
 /* ─────────────────────────────────────────────────────────────────────────────
    STYLES — scoped to .db-root
@@ -189,6 +192,17 @@ const STYLES = `
     font-size: 11px; color: var(--subtle);
   }
 
+  /* 🆕 Nút "Xem thêm" trên mỗi cell, dẫn đến trang quản lý liên quan */
+  .db-more-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10.5px; font-weight: 500; color: var(--muted);
+    background: transparent; border: 0.5px solid var(--border);
+    border-radius: 20px; padding: 3px 9px; cursor: pointer;
+    transition: background .12s, color .12s; white-space: nowrap; flex-shrink: 0;
+  }
+  .db-more-btn:hover { background: var(--bg); color: var(--text); }
+  .db-more-btn svg { font-size: 9px; }
+
   /* ── AREA CHART ── */
   .db-chart-body {
     flex: 1;
@@ -229,16 +243,8 @@ const STYLES = `
     color: var(--text); line-height: 1.1;
     letter-spacing: -.5px;
   }
-  .db-kpi-trend {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 11px; font-weight: 500;
-    padding: 3px 8px; border-radius: 20px;
-    margin-top: 10px;
-  }
-  .db-kpi-trend-up   { background: #dcfce7; color: #15803d; }
-  .db-kpi-trend-down { background: #fee2e2; color: #dc2626; }
-  .db-kpi-vs {
-    font-size: 10px; color: var(--subtle); margin-top: 4px;
+  .db-kpi-sub {
+    font-size: 11px; color: var(--subtle); margin-top: 10px;
   }
 
   /* ── KPI CARD (small — bottom row) ── */
@@ -261,13 +267,8 @@ const STYLES = `
     letter-spacing: .4px; text-transform: uppercase;
     color: var(--subtle);
   }
-  .db-kpi-small-bar {
-    height: 3px; border-radius: 2px;
-    background: var(--border); overflow: hidden;
-  }
-  .db-kpi-small-fill {
-    height: 100%; border-radius: 2px;
-    transition: width .6s ease;
+  .db-kpi-small-sub {
+    font-size: 11px; color: var(--subtle);
   }
 
   /* ── PIE SECTION ── */
@@ -358,10 +359,11 @@ const STYLES = `
     padding: 2px 9px; border-radius: 20px;
     font-size: 11px; font-weight: 500;
   }
-  .db-badge-done     { background: #dcfce7; color: #15803d; }
-  .db-badge-ship     { background: #dbeafe; color: #1d4ed8; }
-  .db-badge-pending  { background: #fef9c3; color: #a16207; }
-  .db-badge-cancel   { background: #f4f2ee; color: var(--muted); }
+  .db-badge-delivered { background: #dcfce7; color: #15803d; }
+  .db-badge-shipping   { background: #dbeafe; color: #1d4ed8; }
+  .db-badge-confirmed  { background: #e0e7ff; color: #4338ca; }
+  .db-badge-pending    { background: #fef9c3; color: #a16207; }
+  .db-badge-cancelled  { background: #f4f2ee; color: var(--muted); }
 
   .db-empty {
     padding: 48px 20px; text-align: center;
@@ -391,28 +393,103 @@ const STYLES = `
     .db-cell-kpi-b1,.db-cell-kpi-b2,
     .db-cell-pie { grid-column: 1; grid-row: auto; }
   }
+
+  /* ══════════════════════════════════════════════════
+     🆕 ROW 2: STATUS DONUT + ĐƠN KẸT + SEGMENT
+  ══════════════════════════════════════════════════ */
+  .db-row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 900px) { .db-row2 { grid-template-columns: 1fr; } }
+
+  .db-card2 {
+    background: var(--surf);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* status donut legend */
+  .db-status-legend { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; flex: 1; }
+  .db-status-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .db-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .db-status-name { flex: 1; color: var(--muted); }
+  .db-status-count { font-family: var(--mono); font-weight: 500; color: var(--text); }
+
+  /* stuck orders */
+  .db-stuck-hd-extra {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--muted);
+  }
+  .db-stuck-input {
+    width: 40px; padding: 3px 6px; border: 0.5px solid var(--border);
+    border-radius: 6px; font-size: 12px; font-family: var(--mono);
+    text-align: center; background: var(--bg); color: var(--text); outline: none;
+  }
+  .db-stuck-input:focus { border-color: var(--accent); }
+  .db-stuck-list { display: flex; flex-direction: column; gap: 0; flex: 1; overflow-y: auto; max-height: 220px; }
+  .db-stuck-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 16px; border-bottom: 0.5px solid var(--border); gap: 8px;
+  }
+  .db-stuck-item:last-child { border-bottom: none; }
+  .db-stuck-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .db-stuck-num { font-family: var(--mono); font-size: 12px; color: var(--accent); font-weight: 500; }
+  .db-stuck-name { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+  .db-stuck-days { font-size: 10px; font-family: var(--mono); padding: 2px 7px; border-radius: 20px; background: #fef2f2; color: #dc2626; white-space: nowrap; }
+  .db-stuck-empty { padding: 24px 16px; text-align: center; color: var(--subtle); font-size: 12px; flex: 1; display: flex; align-items: center; justify-content: center; }
+
+  /* segment breakdown */
+  .db-seg-list { display: flex; flex-direction: column; gap: 0; flex: 1; }
+  .db-seg-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 16px; border-bottom: 0.5px solid var(--border); gap: 8px; }
+  .db-seg-row:last-child { border-bottom: none; }
+  .db-seg-name { font-size: 12px; padding: 2px 9px; border-radius: 20px; font-weight: 500; white-space: nowrap; }
+  .db-seg-right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+  .db-seg-revenue { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--text); }
+  .db-seg-count { font-size: 10px; color: var(--subtle); }
+  .db-seg-loading { padding: 24px 16px; text-align: center; color: var(--subtle); font-size: 12px; flex: 1; display: flex; align-items: center; justify-content: center; }
 `;
 
+const fmtMoney = (n) => {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)} tỷ`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)} triệu`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k`;
+  return new Intl.NumberFormat("vi-VN").format(n) + "đ";
+};
+
 /* ─────────────────────────────────────────────────────────────────────────────
-   STATUS BADGE (pure UI helper — no logic)
+   STATUS BADGE
+   🆕 Khớp đúng enum thật trong Order model:
+   ["pending", "confirmed", "shipping", "delivered", "cancelled"]
+   (KHÔNG có "completed" — bản cũ check "completed" nên không bao giờ match)
 ───────────────────────────────────────────────────────────────────────────── */
+const STATUS_LABELS = {
+  pending: { text: "Chờ xác nhận", cls: "db-badge-pending" },
+  confirmed: { text: "Đã xác nhận", cls: "db-badge-confirmed" },
+  shipping: { text: "Đang giao", cls: "db-badge-shipping" },
+  delivered: { text: "Đã giao", cls: "db-badge-delivered" },
+  cancelled: { text: "Đã hủy", cls: "db-badge-cancelled" },
+};
+
 const StatusBadge = ({ status }) => {
-  switch (status) {
-    case "completed":
-      return <span className="db-badge db-badge-done">Hoàn thành</span>;
-    case "shipping":
-      return <span className="db-badge db-badge-ship">Đang giao</span>;
-    case "pending":
-      return <span className="db-badge db-badge-pending">Chờ xác nhận</span>;
-    default:
-      return <span className="db-badge db-badge-cancel">Đã hủy</span>;
-  }
+  const s = STATUS_LABELS[status] || {
+    text: status || "Không rõ",
+    cls: "db-badge-cancelled",
+  };
+  return <span className={`db-badge ${s.cls}`}>{s.text}</span>;
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
    KPI TALL CARD
+   🆕 Bỏ phần trend %/so sánh tuần trước (không có dữ liệu thật) —
+   thay bằng 1 dòng phụ mô tả ngắn (sub), không bịa số.
 ───────────────────────────────────────────────────────────────────────────── */
-const KpiTall = ({ item }) => {
+const KpiTall = ({ item, onMore }) => {
   const iconCls =
     {
       gold: "db-kpi-icon-gold",
@@ -430,18 +507,24 @@ const KpiTall = ({ item }) => {
         </div>
         <div className={`db-kpi-icon ${iconCls}`}>{item.icon}</div>
       </div>
-      <div>
-        <div
-          className={`db-kpi-trend ${item.isUp ? "db-kpi-trend-up" : "db-kpi-trend-down"}`}
-        >
-          {item.isUp ? (
-            <FaArrowUp style={{ fontSize: 9 }} />
-          ) : (
-            <FaArrowDown style={{ fontSize: 9 }} />
-          )}
-          {item.trend}
-        </div>
-        <div className="db-kpi-vs">so với tuần trước</div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: 8,
+        }}
+      >
+        {item.sub && <div className="db-kpi-sub">{item.sub}</div>}
+        {onMore && (
+          <button
+            className="db-more-btn"
+            onClick={onMore}
+            style={{ marginTop: 10 }}
+          >
+            <FaArrowRight />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -449,8 +532,9 @@ const KpiTall = ({ item }) => {
 
 /* ─────────────────────────────────────────────────────────────────────────────
    KPI SMALL CARD (bottom row)
+   🆕 Bỏ thanh progress giả (fillPct cứng) — chỉ hiển thị số liệu + dòng phụ.
 ───────────────────────────────────────────────────────────────────────────── */
-const KpiSmall = ({ item, fillColor, fillPct }) => {
+const KpiSmall = ({ item, onMore }) => {
   const iconCls =
     {
       gold: "db-kpi-icon-gold",
@@ -468,49 +552,55 @@ const KpiSmall = ({ item, fillColor, fillPct }) => {
         </div>
         <div className={`db-kpi-icon ${iconCls}`}>{item.icon}</div>
       </div>
-      <div>
-        <div className="db-kpi-small-bar">
-          <div
-            className="db-kpi-small-fill"
-            style={{ width: `${fillPct}%`, background: fillColor }}
-          />
-        </div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginTop: 5,
-          }}
-        >
-          <span
-            className={`db-kpi-trend ${item.isUp ? "db-kpi-trend-up" : "db-kpi-trend-down"}`}
-            style={{ fontSize: 10, padding: "2px 7px" }}
-          >
-            {item.isUp ? (
-              <FaArrowUp style={{ fontSize: 8 }} />
-            ) : (
-              <FaArrowDown style={{ fontSize: 8 }} />
-            )}
-            {item.trend}
-          </span>
-          <span style={{ fontSize: 10, color: "var(--subtle)" }}>
-            vs tuần trước
-          </span>
-        </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+        }}
+      >
+        {item.sub && <div className="db-kpi-small-sub">{item.sub}</div>}
+        {onMore && (
+          <button className="db-more-btn" onClick={onMore}>
+            <FaArrowRight />
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   MAIN COMPONENT — 100% logic identical to original
+   🆕 NÚT "XEM THÊM" — dẫn đến trang quản lý liên quan tới card đó
+───────────────────────────────────────────────────────────────────────────── */
+const MoreBtn = ({ onClick, label = "Xem thêm" }) => (
+  <button className="db-more-btn" onClick={onClick}>
+    {label} <FaArrowRight />
+  </button>
+);
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MAIN COMPONENT
 ───────────────────────────────────────────────────────────────────────────── */
 const DashboardPage = () => {
   const { theme } = useAdminTheme();
+  const navigate = useNavigate();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // 🆕 Tổng số khách hàng — lấy thật từ API /users (totalUsers), không hard-code
+  const [totalUsers, setTotalUsers] = useState(null);
+  const [usersLoading, setUsersLoading] = useState(true);
+
+  // 🆕 Ngưỡng số ngày để coi 1 đơn pending/confirmed là "kẹt" — tùy chỉnh được
+  const [stuckThresholdDays, setStuckThresholdDays] = useState(3);
+
+  // 🆕 Doanh thu theo nhóm khách hàng (segment) — lấy từ endpoint batch mới
+  const [segmentRevenue, setSegmentRevenue] = useState(null);
+  const [segmentLoading, setSegmentLoading] = useState(true);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -530,7 +620,12 @@ const DashboardPage = () => {
           fetchedOrders = result.orders || result.data || [];
         }
 
-        setOrders(Array.isArray(fetchedOrders) ? fetchedOrders : []);
+        const safeOrders = Array.isArray(fetchedOrders) ? fetchedOrders : [];
+        setOrders(safeOrders);
+
+        // 🆕 Sau khi có orders, gọi batch segment cho các khách có userId
+        // (đơn khách vãng lai không có userId sẽ tự bị loại ở backend)
+        fetchSegments(safeOrders);
       } catch (err) {
         setError("Không tải được đơn hàng: " + (err.message || "Lỗi server"));
         console.error("Fetch error:", err);
@@ -539,7 +634,76 @@ const DashboardPage = () => {
       }
     };
 
+    // 🆕 Đếm tổng số khách hàng thật, dùng GET /users?limit=1 chỉ để đọc totalUsers
+    // (theo user.controller.js: res.json({ users, totalPages, currentPage, totalUsers }))
+    const fetchUserCount = async () => {
+      try {
+        setUsersLoading(true);
+        const result = await axiosClient.get("/users", {
+          params: { limit: 1, page: 1 },
+        });
+        setTotalUsers(
+          typeof result?.totalUsers === "number" ? result.totalUsers : null,
+        );
+      } catch (err) {
+        console.error("Fetch user count error:", err);
+        setTotalUsers(null);
+      } finally {
+        setUsersLoading(false);
+      }
+    };
+
+    // 🆕 Lấy segment (nhóm khách) cho từng userId xuất hiện trong orders,
+    // rồi cộng doanh thu (đơn delivered) theo từng nhóm.
+    const fetchSegments = async (ordersList) => {
+      try {
+        setSegmentLoading(true);
+
+        const userIds = [
+          ...new Set(
+            ordersList
+              .map((o) => o.userId?._id || o.userId)
+              .filter((id) => id && typeof id === "string"),
+          ),
+        ];
+
+        if (userIds.length === 0) {
+          setSegmentRevenue({});
+          return;
+        }
+
+        const result = await axiosClient.post(
+          "/vouchers/admin/users/segments-batch",
+          { userIds },
+        );
+
+        const segments = result?.segments || {};
+
+        // Cộng doanh thu (chỉ đơn delivered) theo từng segment
+        const revenueBySegment = {};
+        ordersList
+          .filter((o) => o.status === "delivered")
+          .forEach((o) => {
+            const id = o.userId?._id || o.userId;
+            const seg = segments[id] || "unknown";
+            if (!revenueBySegment[seg]) {
+              revenueBySegment[seg] = { revenue: 0, count: 0 };
+            }
+            revenueBySegment[seg].revenue += o.totalAmount_cents || 0;
+            revenueBySegment[seg].count += 1;
+          });
+
+        setSegmentRevenue(revenueBySegment);
+      } catch (err) {
+        console.error("Fetch segments error:", err);
+        setSegmentRevenue(null);
+      } finally {
+        setSegmentLoading(false);
+      }
+    };
+
     fetchOrders();
+    fetchUserCount();
   }, []);
 
   // 1. Tạo State lưu ngày (Mặc định lọc 7 ngày gần nhất)
@@ -582,74 +746,66 @@ const DashboardPage = () => {
     return arr.reduce(callback, initialValue);
   };
 
+  // 🆕 Chỉ tính doanh thu từ đơn đã giao thành công (delivered) — khớp đúng
+  // enum status thật, tránh cộng cả đơn pending/cancelled vào "doanh thu".
+  const deliveredOrders = orders.filter((o) => o.status === "delivered");
+
   const totalRevenue = safeReduce(
-    orders,
+    deliveredOrders,
     (sum, o) => sum + (o.totalAmount_cents || 0),
     0,
   );
   const totalOrders = orders.length || 0;
+  const deliveredCount = deliveredOrders.length;
+  const completionRate =
+    totalOrders > 0 ? Math.round((deliveredCount / totalOrders) * 100) : 0;
+
+  // 🆕 AOV — Giá trị đơn trung bình (Average Order Value), tính từ đơn đã giao,
+  // thay cho "Lợi Nhuận Hiếm: 842 triệu" (số bịa, không có nguồn).
+  const aov =
+    deliveredCount > 0 ? Math.round(totalRevenue / deliveredCount) : 0;
 
   const kpiData = [
     {
-      title: "Tổng Doanh Thu",
-      value: `${(totalRevenue / 1_000_000_000).toFixed(2)} tỷ`,
+      title: "Doanh Thu (đã giao)",
+      value: fmtMoney(totalRevenue),
       icon: <FaCoins />,
-      trend: "+18.7%",
-      isUp: true,
+      sub: `${deliveredCount} đơn đã giao thành công`,
       color: "gold",
     },
     {
       title: "Đơn Hàng",
       value: totalOrders.toLocaleString(),
       icon: <FaShoppingBag />,
-      trend: `+${Math.round(
-        (safeReduce(
-          orders.filter((o) => o.status === "completed"),
-          (sum) => sum + 1,
-          0,
-        ) /
-          (totalOrders || 1)) *
-          100,
-      )}% hoàn thành`,
-      isUp: true,
+      sub: `${completionRate}% đã giao thành công`,
       color: "success",
     },
     {
       title: "Khách Hàng",
-      value: "3,672",
+      value: usersLoading
+        ? "..."
+        : totalUsers !== null
+          ? totalUsers.toLocaleString()
+          : "—",
       icon: <FaUsers />,
-      trend: "+9.8%",
-      isUp: true,
+      sub: "Tổng số tài khoản trong hệ thống",
       color: "primary",
     },
     {
-      title: "Lợi Nhuận Hiếm",
-      value: "842 triệu",
+      title: "Giá Trị Đơn TB",
+      value:
+        aov > 0
+          ? new Intl.NumberFormat("vi-VN", {
+              style: "currency",
+              currency: "VND",
+              maximumFractionDigits: 0,
+            }).format(aov)
+          : "—",
       icon: <FaGem />,
-      trend: "+32.1%",
-      isUp: true,
+      sub: "Trung bình mỗi đơn đã giao (AOV)",
       color: "danger",
     },
   ];
-
-  // Doanh thu theo ngày
-  const revenueByDay = safeReduce(
-    orders,
-    (acc, order) => {
-      if (!order?.createdAt) return acc;
-      const date = new Date(order.createdAt).toLocaleDateString("vi-VN", {
-        weekday: "short",
-      });
-      acc[date] = (acc[date] || 0) + (order.totalAmount_cents || 0);
-      return acc;
-    },
-    {},
-  );
-
-  const revenueData = Object.entries(revenueByDay).map(([name, doanhthu]) => ({
-    name,
-    doanhthu,
-  }));
 
   // Top set bán chạy
   const setSales = safeReduce(
@@ -672,6 +828,60 @@ const DashboardPage = () => {
 
   const COLORS = ["#d4af37", "#ff6b6b", "#4ecdc4", "#45b7d1"];
 
+  // 🆕 Phân bố trạng thái đơn — toàn bộ orders đang có, theo 5 status thật
+  const STATUS_META = {
+    pending: { label: "Chờ xác nhận", color: "#ca8a04" },
+    confirmed: { label: "Đã xác nhận", color: "#4338ca" },
+    shipping: { label: "Đang giao", color: "#1d4ed8" },
+    delivered: { label: "Đã giao", color: "#16a34a" },
+    cancelled: { label: "Đã hủy", color: "#78716c" },
+  };
+  const statusCounts = safeReduce(
+    orders,
+    (acc, o) => {
+      const s = o.status || "unknown";
+      acc[s] = (acc[s] || 0) + 1;
+      return acc;
+    },
+    {},
+  );
+  const statusData = Object.keys(STATUS_META)
+    .filter((s) => statusCounts[s] > 0)
+    .map((s) => ({
+      name: STATUS_META[s].label,
+      value: statusCounts[s],
+      color: STATUS_META[s].color,
+    }));
+
+  // 🆕 Đơn "kẹt" — pending/confirmed quá X ngày chưa chuyển sang shipping/delivered
+  const now2 = new Date();
+  const stuckOrders = orders
+    .filter((o) => o.status === "pending" || o.status === "confirmed")
+    .map((o) => {
+      const created = o.createdAt ? new Date(o.createdAt) : null;
+      const daysSince = created
+        ? Math.floor((now2 - created) / (1000 * 60 * 60 * 24))
+        : 0;
+      return { ...o, daysSince };
+    })
+    .filter((o) => o.daysSince >= stuckThresholdDays)
+    .sort((a, b) => b.daysSince - a.daysSince);
+
+  // 🆕 Nhãn hiển thị cho segment khách hàng
+  const SEGMENT_LABELS = {
+    new: { label: "Khách mới", color: "#1d4ed8", bg: "#dbeafe" },
+    loyal: { label: "Thân thiết", color: "#15803d", bg: "#dcfce7" },
+    "one-time": { label: "Mua 1 lần", color: "#a16207", bg: "#fef9c3" },
+    "at-risk": { label: "Có nguy cơ rời", color: "#dc2626", bg: "#fee2e2" },
+    "high-value": {
+      label: "VIP chi tiêu cao",
+      color: "#7e22ce",
+      bg: "#f3e8ff",
+    },
+    unknown: { label: "Không rõ", color: "#78716c", bg: "#f4f2ee" },
+  };
+  const SEGMENT_ORDER = ["high-value", "loyal", "new", "one-time", "at-risk"];
+
   // Recent Orders
   const recentOrders = Array.isArray(orders)
     ? orders.slice(0, 5).map((o) => ({
@@ -690,35 +900,6 @@ const DashboardPage = () => {
         product: o.items?.[0]?.name || "Nhiều sản phẩm",
       }))
     : [];
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "completed":
-        return (
-          <Badge bg="success" className="rounded-pill px-3 py-2">
-            Hoàn thành
-          </Badge>
-        );
-      case "shipping":
-        return (
-          <Badge bg="primary" className="rounded-pill px-3 py-2">
-            Đang giao
-          </Badge>
-        );
-      case "pending":
-        return (
-          <Badge bg="warning" text="dark" className="rounded-pill px-3 py-2">
-            Chờ xác nhận
-          </Badge>
-        );
-      default:
-        return (
-          <Badge bg="secondary" className="rounded-pill px-3 py-2">
-            Đã hủy
-          </Badge>
-        );
-    }
-  };
 
   /* ── RENDER ── */
   return (
@@ -773,7 +954,7 @@ const DashboardPage = () => {
                   </span>
                 </div>
 
-                {/* BỘ LỌC NGÀY - THÊM ĐOẠN NÀY */}
+                {/* BỘ LỌC NGÀY */}
                 <div className="d-flex align-items-center gap-2 p-1 px-2 rounded-pill bg-light border">
                   <FaCalendarAlt className="text-muted small" />
                   <input
@@ -857,22 +1038,31 @@ const DashboardPage = () => {
 
             {/* ── CELL 2: KPI tall — Doanh thu (col 4, row 1) ── */}
             <div className="db-cell db-cell-kpi-r1">
-              <KpiTall item={kpiData[0]} />
+              <KpiTall
+                item={kpiData[0]}
+                onMore={() => navigate("/admin/orders")}
+              />
             </div>
 
             {/* ── CELL 3: KPI tall — Đơn hàng (col 4, row 2) ── */}
             <div className="db-cell db-cell-kpi-r2">
-              <KpiTall item={kpiData[1]} />
+              <KpiTall
+                item={kpiData[1]}
+                onMore={() => navigate("/admin/orders")}
+              />
             </div>
 
             {/* ── CELL 4: KPI small — Khách hàng (col 1, row 3) ── */}
             <div className="db-cell db-cell-kpi-b1">
-              <KpiSmall item={kpiData[2]} fillColor="#1d4ed8" fillPct={72} />
+              <KpiSmall
+                item={kpiData[2]}
+                onMore={() => navigate("/admin/customers?type=customer")}
+              />
             </div>
 
-            {/* ── CELL 5: KPI small — Lợi nhuận (col 2, row 3) ── */}
+            {/* ── CELL 5: KPI small — AOV (col 2, row 3) ── */}
             <div className="db-cell db-cell-kpi-b2">
-              <KpiSmall item={kpiData[3]} fillColor="#be185d" fillPct={88} />
+              <KpiSmall item={kpiData[3]} />
             </div>
 
             {/* ── CELL 6: Pie chart (col 3-4, row 3) ── */}
@@ -960,6 +1150,185 @@ const DashboardPage = () => {
             </div>
           </div>
 
+          {/* 🆕 ROW 2: Phân bố trạng thái + Đơn kẹt + Doanh thu theo nhóm khách */}
+          <div className="db-row2">
+            {/* ── Phân bố trạng thái đơn ── */}
+            <div className="db-card2">
+              <div className="db-cell-hd">
+                <div>
+                  <p className="db-cell-hd-title">Phân Bố Trạng Thái Đơn</p>
+                  <span className="db-cell-hd-sub">{orders.length} đơn</span>
+                </div>
+                <MoreBtn onClick={() => navigate("/admin/orders")} />
+              </div>
+              {statusData.length > 0 ? (
+                <div className="db-pie-body" style={{ minHeight: 160 }}>
+                  <div
+                    className="db-pie-chart-wrap"
+                    style={{ width: 110, height: 110 }}
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={statusData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={32}
+                          outerRadius={50}
+                          paddingAngle={4}
+                          dataKey="value"
+                          startAngle={90}
+                          endAngle={-270}
+                        >
+                          {statusData.map((entry, index) => (
+                            <Cell
+                              key={`status-cell-${index}`}
+                              fill={entry.color}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            background: "#fff",
+                            border: "0.5px solid #e2ded6",
+                            borderRadius: 8,
+                            fontSize: 12,
+                            color: "#1c1917",
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="db-status-legend">
+                    {statusData.map((s, i) => (
+                      <div className="db-status-row" key={i}>
+                        <div
+                          className="db-status-dot"
+                          style={{ background: s.color }}
+                        />
+                        <span className="db-status-name">{s.name}</span>
+                        <span className="db-status-count">{s.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="db-stuck-empty">Chưa có đơn hàng</div>
+              )}
+            </div>
+
+            {/* ── Đơn kẹt (pending/confirmed quá lâu) ── */}
+            <div className="db-card2">
+              <div className="db-cell-hd">
+                <div>
+                  <p className="db-cell-hd-title">
+                    <FaExclamationTriangle
+                      style={{ fontSize: 11, color: "#dc2626", marginRight: 5 }}
+                    />
+                    Đơn Kẹt
+                  </p>
+                  <span className="db-cell-hd-sub">
+                    {stuckOrders.length} đơn cần xử lý
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div className="db-stuck-hd-extra">
+                    Quá
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      className="db-stuck-input"
+                      value={stuckThresholdDays}
+                      onChange={(e) =>
+                        setStuckThresholdDays(
+                          Math.max(
+                            1,
+                            Math.min(30, Number(e.target.value) || 1),
+                          ),
+                        )
+                      }
+                    />
+                    ngày
+                  </div>
+                  <MoreBtn onClick={() => navigate("/admin/orders")} />
+                </div>
+              </div>
+              {stuckOrders.length > 0 ? (
+                <div className="db-stuck-list">
+                  {stuckOrders.map((o) => (
+                    <div className="db-stuck-item" key={o._id || o.orderNumber}>
+                      <div className="db-stuck-left">
+                        <span className="db-stuck-num">
+                          {o.orderNumber || "N/A"}
+                        </span>
+                        <span className="db-stuck-name">
+                          {o.userId?.name || "Khách vãng lai"}
+                        </span>
+                      </div>
+                      <span className="db-stuck-days">{o.daysSince} ngày</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="db-stuck-empty">
+                  <FaClock style={{ marginRight: 6, opacity: 0.5 }} />
+                  Không có đơn nào bị kẹt
+                </div>
+              )}
+            </div>
+
+            {/* ── Doanh thu theo nhóm khách hàng ── */}
+            <div className="db-card2">
+              <div className="db-cell-hd">
+                <div>
+                  <p className="db-cell-hd-title">Doanh Thu Theo Nhóm Khách</p>
+                  <span className="db-cell-hd-sub">Đơn đã giao</span>
+                </div>
+                <MoreBtn
+                  onClick={() => navigate("/admin/customers?type=customer")}
+                />
+              </div>
+              {segmentLoading ? (
+                <div className="db-seg-loading">
+                  <div
+                    className="db-spinner"
+                    style={{ width: 20, height: 20 }}
+                  />
+                </div>
+              ) : segmentRevenue && Object.keys(segmentRevenue).length > 0 ? (
+                <div className="db-seg-list">
+                  {SEGMENT_ORDER.filter((seg) => segmentRevenue[seg]).map(
+                    (seg) => {
+                      const meta = SEGMENT_LABELS[seg];
+                      const data = segmentRevenue[seg];
+                      return (
+                        <div className="db-seg-row" key={seg}>
+                          <span
+                            className="db-seg-name"
+                            style={{ color: meta.color, background: meta.bg }}
+                          >
+                            {meta.label}
+                          </span>
+                          <div className="db-seg-right">
+                            <span className="db-seg-revenue">
+                              {fmtMoney(data.revenue)}
+                            </span>
+                            <span className="db-seg-count">
+                              {data.count} đơn
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    },
+                  )}
+                </div>
+              ) : (
+                <div className="db-seg-loading">Chưa có đơn đã giao</div>
+              )}
+            </div>
+          </div>
+
           {/* RECENT ORDERS */}
           <div className="db-orders-card">
             <div className="db-orders-hd">
@@ -967,7 +1336,12 @@ const DashboardPage = () => {
                 <FaShoppingBag />
                 Đơn Hàng Gần Đây
               </h5>
-              <button className="db-view-all">Xem tất cả</button>
+              <button
+                className="db-view-all"
+                onClick={() => navigate("/admin/orders")}
+              >
+                Xem tất cả
+              </button>
             </div>
 
             {orders.length === 0 ? (
@@ -1019,7 +1393,6 @@ const DashboardPage = () => {
               </table>
             )}
           </div>
-
         </>
       )}
     </div>
@@ -1027,4 +1400,3 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
-

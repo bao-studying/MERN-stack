@@ -5,6 +5,13 @@
  *   updateStatus     → gửi email tương ứng status mới
  *
  * Ưu tiên: template lưu trong DB (từ Email Builder) → fallback hardcoded
+ *
+ * 🆕 FIX: markVoucherAsUsed() trước đây chỉ được gọi với 2/6 tham số bắt buộc
+ * (voucherId, userId) — thiếu orderId, discountAmount, orderTotal, orderTotalAfter.
+ * Vì VoucherUsageLog có required:true cho các field này, lệnh insert log sẽ luôn
+ * throw lỗi validation (bị catch âm thầm), khiến stats voucher (usageRate,
+ * totalRevenueImpact, bySegment...) không bao giờ được cập nhật. Đã sửa để
+ * truyền đủ dữ liệu có sẵn ngay tại điểm gọi.
  */
 
 import Order from "../models/order.js";
@@ -20,7 +27,9 @@ import {
   cancelledStatusTemplate,
   confirmedStatusTemplate,
 } from "../utils/emailTemplates.js";
-import { markVoucherAsUsed } from "../services/voucher.service.js"; /* ─────────────────────────────────────────────────────────────────────────────
+import { markVoucherAsUsed } from "../services/voucher.service.js";
+
+/* ─────────────────────────────────────────────────────────────────────────────
    HELPER: Render blocks từ DB + thay thế {{biến}} bằng dữ liệu thật
 ───────────────────────────────────────────────────────────────────────────── */
 const renderBlocksToHtml = (blocks = []) => {
@@ -192,7 +201,8 @@ const getEmailHtml = async (status, order, userName) => {
 
 /* ─────────────────────────────────────────────────────────────────────────────
    CLIENT: TẠO ĐƠN HÀNG
-──────*/ export const createOrderService = async (userId, orderData) => {
+───────────────────────────────────────────────────────────────────────────── */
+export const createOrderService = async (userId, orderData) => {
   const cart = await Cart.findOne({ userId });
   if (!cart || cart.items.length === 0) throw new Error("Giỏ hàng trống");
 
@@ -206,9 +216,7 @@ const getEmailHtml = async (status, order, userName) => {
   const customerName =
     orderData.customerName || user?.name || user?.email || "Khách hàng";
 
-  // ── NEW: ưu tiên khớp theo cặp (productId + variantId) từ orderItemsPayload ──
-  // nếu frontend gửi orderItems (đã có variantId từng dòng) thì dùng nó để xác định
-  // chính xác dòng cart nào được chọn (tránh nhầm khi 1 product có nhiều biến thể trong cart)
+  // ── ưu tiên khớp theo cặp (productId + variantId) từ orderItemsPayload ──
   const usePayloadKeys =
     Array.isArray(orderItemsPayload) && orderItemsPayload.length > 0;
   const payloadKeySet = new Set(
@@ -241,14 +249,12 @@ const getEmailHtml = async (status, order, userName) => {
 
   let totalAmount_cents = 0;
   const orderItems = [];
-  // Theo dõi key đã xử lý để xóa đúng dòng cart (productId+variantId), không xóa nhầm dòng khác variant
   const processedKeys = [];
 
   for (const item of checkoutItems) {
     const product = await Product.findById(item.productId);
     if (!product) throw new Error(`Sản phẩm không tồn tại: ${item.productId}`);
 
-    // ── NEW: tìm đúng biến thể theo variantId của dòng cart, fallback variant đầu tiên ──
     const cartVariantId = item.variantId ? item.variantId.toString() : null;
     const variant = cartVariantId
       ? product.variants?.find((v) => v._id.toString() === cartVariantId)
@@ -266,7 +272,6 @@ const getEmailHtml = async (status, order, userName) => {
       name: product.name,
       price_cents: variant.price_cents,
       image: product.images?.[0]?.imageUrl || "",
-      // NEW: snapshot biến thể
       variantId: variant._id || null,
       variantName: variant.name || "",
       sku: variant.sku || "",
@@ -280,6 +285,10 @@ const getEmailHtml = async (status, order, userName) => {
 
   const SHIPPING_FEE = 30000;
   const FREESHIP_THRESHOLD = 300000;
+  // 🆕 Giữ lại tổng tiền HÀNG trước giảm giá (chưa cộng ship) — dùng làm
+  // "orderTotal" khi log voucher usage, để đúng nghĩa "đơn hàng trước giảm".
+  const orderTotalBeforeDiscount = totalAmount_cents;
+
   let finalTotal = totalAmount_cents;
   if (totalAmount_cents < FREESHIP_THRESHOLD) finalTotal += SHIPPING_FEE;
   if (discountAmount > 0)
@@ -303,7 +312,7 @@ const getEmailHtml = async (status, order, userName) => {
     }),
   });
 
-  // ── Dọn giỏ hàng — NEW: xóa đúng theo (productId+variantId), không xóa nhầm variant khác cùng product ──
+  // ── Dọn giỏ hàng ──
   const processedKeySet = new Set(processedKeys);
   cart.items = cart.items.filter((item) => {
     const vid = item.variantId ? item.variantId.toString() : "default";
@@ -311,10 +320,20 @@ const getEmailHtml = async (status, order, userName) => {
   });
   await cart.save();
 
+  // 🆕 FIX: truyền đủ 6 tham số bắt buộc của markVoucherAsUsed.
+  // Trước đây chỉ gọi markVoucherAsUsed(voucherId, userId) — thiếu orderId,
+  // discountAmount, orderTotal, orderTotalAfter (đều required trong
+  // VoucherUsageLog) khiến log luôn lỗi validation và bị catch âm thầm,
+  // làm toàn bộ stats voucher (usageRate, totalRevenueImpact, bySegment) = 0.
   if (voucherId) {
-    await markVoucherAsUsed(voucherId, userId).catch((err) =>
-      console.error("⚠️ markVoucherUsed lỗi:", err.message),
-    );
+    await markVoucherAsUsed(
+      voucherId,
+      userId,
+      newOrder.orderNumber,
+      Number(discountAmount),
+      orderTotalBeforeDiscount,
+      finalTotal,
+    ).catch((err) => console.error("⚠️ markVoucherUsed lỗi:", err.message));
   }
 
   // ── Gửi email xác nhận đặt hàng ── (GIỮ NGUYÊN, không đổi)
@@ -352,6 +371,7 @@ const getEmailHtml = async (status, order, userName) => {
 
   return newOrder;
 };
+
 /* ─────────────────────────────────────────────────────────────────────────────
    CLIENT: XEM ĐƠN HÀNG
 ───────────────────────────────────────────────────────────────────────────── */
@@ -380,7 +400,6 @@ export const getAllOrdersService = async (query) => {
    ADMIN: CẬP NHẬT TRẠNG THÁI → tự động gửi email
 ───────────────────────────────────────────────────────────────────────────── */
 export const updateOrderStatusService = async (orderId, status) => {
-  // Populate userId để có email + tên khách
   const order = await Order.findByIdAndUpdate(
     orderId,
     { status },
@@ -389,7 +408,6 @@ export const updateOrderStatusService = async (orderId, status) => {
 
   if (!order) throw new Error("Order not found");
 
-  // Gửi email tương ứng status (non-blocking)
   const userEmail = order.userId?.email;
   const userName = order.userId?.name || "Khách hàng";
 

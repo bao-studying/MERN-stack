@@ -1,6 +1,95 @@
 import Voucher from "../models/voucher.model.js";
 import VoucherUsageLog from "../models/voucherUsageLog.model.js";
 import User from "../models/user.js";
+import Order from "../models/order.js";
+
+/**
+ * Tính segment của 1 khách NGAY LẬP TỨC, dựa trên đơn hàng thật trong collection Order.
+ * Dùng để admin xem TRƯỚC khi tặng voucher, hoặc để Dashboard hiển thị nhóm khách —
+ * không phụ thuộc VoucherUsageLog (khác với cách tính cũ chỉ chạy sau khi order
+ * vừa hoàn tất và ghi log).
+ *
+ * Lưu ý quan trọng: Order model dùng status "delivered" (không phải "completed"
+ * như bản cũ), và field tiền là totalAmount_cents (không phải "total").
+ * Bản cũ dùng sai cả hai field này nên luôn trả về "new" cho mọi khách.
+ *
+ * Trả về: "new" | "loyal" | "one-time" | "at-risk" | "high-value"
+ */
+export const getUserSegment = async (userId) => {
+  try {
+    const orders = await Order.find({
+      userId,
+      status: "delivered",
+    }).select("totalAmount_cents createdAt");
+
+    if (orders.length === 0) return "new";
+
+    const now = new Date();
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const recentOrders = orders.filter((o) => o.createdAt > sixtyDaysAgo);
+    const veryRecentOrders = orders.filter((o) => o.createdAt > thirtyDaysAgo);
+
+    // NEW: chỉ 1 đơn, mua trong 30 ngày gần nhất
+    if (orders.length === 1 && veryRecentOrders.length === 1) {
+      return "new";
+    }
+
+    // AT-RISK: từng mua ≥3 đơn nhưng im hơn 60 ngày
+    if (orders.length >= 3 && recentOrders.length === 0) {
+      return "at-risk";
+    }
+
+    // LOYAL: ≥5 đơn trong 60 ngày gần nhất
+    if (recentOrders.length >= 5) {
+      return "loyal";
+    }
+
+    // HIGH-VALUE: tổng chi tiêu > 50 triệu
+    const totalSpent = orders.reduce(
+      (sum, o) => sum + (o.totalAmount_cents || 0),
+      0,
+    );
+    if (totalSpent > 50_000_000) {
+      return "high-value";
+    }
+
+    // ONE-TIME: chỉ đúng 1 đơn (và không rơi vào "new" ở trên)
+    if (orders.length === 1) {
+      return "one-time";
+    }
+
+    // DEFAULT
+    return "loyal";
+  } catch (e) {
+    console.error("getUserSegment error:", e);
+    return "new";
+  }
+};
+
+/**
+ * Gắn segment cho danh sách users (dùng cho getEligibleUsers).
+ * Chạy song song để không chậm khi danh sách dài.
+ */
+export const attachSegmentsToUsers = async (users) => {
+  const segments = await Promise.all(users.map((u) => getUserSegment(u._id)));
+  return users.map((u, i) => ({
+    ...(u.toObject ? u.toObject() : u),
+    segment: segments[i],
+  }));
+};
+
+/**
+ * Nhãn hiển thị tiếng Việt cho từng segment — dùng chung FE/BE nếu cần.
+ */
+export const SEGMENT_LABELS = {
+  new: "Khách mới",
+  loyal: "Khách thân thiết",
+  "one-time": "Mua 1 lần",
+  "at-risk": "Có nguy cơ rời bỏ",
+  "high-value": "Khách VIP (chi tiêu cao)",
+};
 
 /**
  * Mark voucher as used + log vào VoucherUsageLog
@@ -15,8 +104,8 @@ export const markVoucherAsUsed = async (
   orderTotalAfter,
 ) => {
   try {
-    // 1. Tìm user segment
-    const segment = await calculateUserSegment(userId);
+    // 1. Tìm user segment (dùng hàm mới, chuẩn theo Order model thật)
+    const segment = await getUserSegment(userId);
 
     // 2. Log vào VoucherUsageLog
     const log = await VoucherUsageLog.create({
@@ -41,58 +130,12 @@ export const markVoucherAsUsed = async (
 };
 
 /**
- * Calculate user segment dựa trên purchase history
- * "new" | "loyal" | "one-time" | "at-risk" | "high-value"
+ * @deprecated Dùng getUserSegment thay thế (chuẩn theo Order model thật:
+ * status "delivered", field totalAmount_cents). Giữ lại để không vỡ code cũ
+ * nếu còn nơi khác import tên này.
  */
 export const calculateUserSegment = async (userId) => {
-  try {
-    // Giả sử Order model có structure: {userId, total, createdAt, status: "completed"}
-    // Adjust theo thực tế của bạn
-    const orders = await (
-      await import("../models/order.model.js")
-    ).default.find({ userId, status: "completed" });
-
-    if (orders.length === 0) return "new";
-
-    const now = new Date();
-    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    const recentOrders = orders.filter((o) => o.createdAt > sixtyDaysAgo);
-    const veryRecentOrders = orders.filter((o) => o.createdAt > thirtyDaysAgo);
-
-    // NEW: purchased < 30 days
-    if (veryRecentOrders.length === 1 && veryRecentOrders[0]) {
-      return "new";
-    }
-
-    // AT-RISK: 3+ purchases nhưng không mua 60 ngày
-    if (orders.length >= 3 && recentOrders.length === 0) {
-      return "at-risk";
-    }
-
-    // LOYAL: 5+ purchases trong 60 ngày
-    if (recentOrders.length >= 5) {
-      return "loyal";
-    }
-
-    // HIGH-VALUE: tổng tiền > 50 triệu
-    const totalSpent = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-    if (totalSpent > 50_000_000) {
-      return "high-value";
-    }
-
-    // ONE-TIME: chỉ 1 purchase
-    if (orders.length === 1) {
-      return "one-time";
-    }
-
-    // DEFAULT
-    return "loyal";
-  } catch (e) {
-    console.error("calculateUserSegment error:", e);
-    return "new";
-  }
+  return getUserSegment(userId);
 };
 
 /**
@@ -147,6 +190,7 @@ export const updateVoucherStats = async (voucherId) => {
 
     await Voucher.findByIdAndUpdate(voucherId, {
       $set: {
+        "stats.timesGiven": timesGiven,
         "stats.timesUsed": timesUsed,
         "stats.usageRate": usageRate,
         "stats.totalRevenueImpact": totalRevenueImpact,
@@ -162,14 +206,13 @@ export const updateVoucherStats = async (voucherId) => {
 };
 
 /**
- * Calculate tất cả user segments (cron job)
- * Chạy mỗi đêm để refresh segmentation
+ * Calculate tất cả user segments (cron job) — giữ nguyên, chỉ đổi sang hàm mới.
  */
 export const recalculateAllUserSegments = async () => {
   try {
     const users = await User.find({}, "_id");
     for (const user of users) {
-      await calculateUserSegment(user._id);
+      await getUserSegment(user._id);
     }
     console.log(`Recalculated segments for ${users.length} users`);
   } catch (e) {
